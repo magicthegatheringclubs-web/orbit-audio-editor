@@ -362,9 +362,9 @@
         <div class="empty-orbit" id="emptyOrbit">No sources yet. Add a track to see it appear here.</div>
       </div>
       <div class="dropzone" id="dropzone">
-        Drop audio files here, or <span class="key">click to browse</span> — each file becomes its own track
+        Drop audio or video here, or <span class="key">click to browse — camera roll included</span> — each file becomes its own track
       </div>
-      <input type="file" id="fileInput" class="visually-hidden-file" accept="audio/*,.mp3,.wav,.m4a,.aac,.flac,.ogg,.caf,.aiff" multiple>
+      <input type="file" id="fileInput" class="visually-hidden-file" accept="audio/*,video/*,.mp3,.wav,.m4a,.aac,.flac,.ogg,.caf,.aiff,.mp4,.mov,.m4v" multiple>
     </div>
 
     <!-- Track List -->
@@ -1024,9 +1024,18 @@
 
   // ---------- File input handling ----------
   function handleFiles(fileList){
+    // Camera roll clips (iPhone/Android video) carry an audio track we can still use —
+    // the <audio> element and Web Audio API happily decode just the audio out of an
+    // mp4/mov/m4v container, so we accept video files here too, not just pure audio.
     const audioExt = /\.(mp3|wav|ogg|m4a|aac|flac|caf|aiff|aif|wma|opus|3gp|mp4)$/i;
+    const videoExt = /\.(mov|m4v|3gp|3gpp|webm|avi)$/i;
     const all = Array.from(fileList);
-    const files = all.filter(f => f.type.startsWith('audio/') || audioExt.test(f.name));
+    const files = all.filter(f =>
+      f.type.startsWith('audio/') ||
+      f.type.startsWith('video/') ||
+      audioExt.test(f.name) ||
+      videoExt.test(f.name)
+    );
     files.forEach(f => addTrackFromFile(f));
 
     // iOS sometimes hands back files with an empty/odd MIME type. If nothing made it
@@ -1034,7 +1043,7 @@
     // what makes it look "broken" rather than just picky about file types.
     if(all.length > 0 && files.length === 0){
       const original = dropzone.innerHTML;
-      dropzone.textContent = `Couldn't read ${all.length} file(s) as audio — try MP3, WAV, or M4A.`;
+      dropzone.textContent = `Couldn't read ${all.length} file(s) as audio — try MP3, WAV, M4A, or a video clip.`;
       setTimeout(()=>{ dropzone.innerHTML = original; }, 4000);
     }
   }
