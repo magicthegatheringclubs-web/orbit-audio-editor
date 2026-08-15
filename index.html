@@ -220,7 +220,8 @@
 
   /* ---------- Timeline ---------- */
   .timeline-panel{ margin-top: 20px; }
-  .tl-label{ width: 150px; flex-shrink:0; font-size: 11.5px; display:flex; align-items:center; gap:7px; padding-right: 10px; overflow:hidden; }
+  .timeline-scroll{ overflow-x: visible; -webkit-overflow-scrolling: touch; }
+  .tl-label{ width: 150px; flex-shrink:0; font-size: 11.5px; display:flex; align-items:center; gap:7px; padding-right: 10px; overflow:hidden; background: var(--panel); }
   .tl-label .swatch{ flex-shrink:0; }
   .tl-label span.name{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .tl-label span.mode-tag{ font-size:9px; color: var(--text-dimmer); font-family:'JetBrains Mono',monospace; flex-shrink:0; }
@@ -255,6 +256,60 @@
   ::-webkit-scrollbar-thumb{ background: var(--line); border-radius: 4px; }
 
   footer{ margin-top: 18px; font-size: 11px; color: var(--text-dimmer); text-align:center; letter-spacing: 0.02em; }
+
+  /* =========================================================
+     PHONE LAYOUT
+     - transport docks to a fixed bar at the bottom (thumb reach)
+     - track list stops nesting its own scrollbar inside the page
+     - timeline becomes horizontally scrollable with a pinned label
+     ========================================================= */
+  @media (max-width: 680px){
+    .app{
+      padding: 14px 14px 0;
+      padding-top: max(14px, env(safe-area-inset-top));
+      padding-left: max(14px, env(safe-area-inset-left));
+      padding-right: max(14px, env(safe-area-inset-right));
+      padding-bottom: calc(78px + env(safe-area-inset-bottom));
+    }
+    header.top{ margin-bottom: 16px; padding-bottom: 14px; gap: 10px; }
+    .brand .mark{ width: 28px; height: 28px; }
+    .brand h1{ font-size: 16px; }
+    .brand p{ font-size: 9.5px; }
+    .header-controls{ width: 100%; justify-content: flex-start; }
+
+    .grid{ gap: 14px; }
+    .panel{ padding: 14px; }
+
+    /* Transport leaves the header flow and docks to the bottom of the screen */
+    .transport{
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+      border-radius: 0; border-left: none; border-right: none; border-bottom: none;
+      background: rgba(16,20,26,0.94);
+      -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+      box-shadow: 0 -6px 24px rgba(0,0,0,0.4);
+      padding: 10px 14px;
+      padding-bottom: max(10px, env(safe-area-inset-bottom));
+      padding-left: max(14px, env(safe-area-inset-left));
+      padding-right: max(14px, env(safe-area-inset-right));
+      gap: 10px;
+    }
+    .seek{ flex: 1; width: auto; }
+    .time{ min-width: auto; font-size: 11px; }
+
+    /* Track list scrolls with the page instead of in its own inner box */
+    .tracks-panel{ max-height: none; overflow-y: visible; }
+
+    /* Timeline: pin the track label, let the lanes scroll sideways */
+    .timeline-scroll{ overflow-x: auto; }
+    .ruler-lane, .tl-lane{ min-width: 460px; }
+    .tl-label{
+      position: sticky; left: 0; z-index: 4;
+      width: 58px; padding-right: 6px;
+      box-shadow: 6px 0 8px -6px rgba(0,0,0,0.5);
+    }
+    .tl-label span.name{ display: none; }
+    .panel-title .hint{ display: none; }
+  }
 </style>
 </head>
 <body>
@@ -330,14 +385,16 @@
       <h2>Timeline</h2>
       <span class="hint mono">drag a diamond to retime · click a diamond to delete it</span>
     </div>
-    <div class="timeline-header-row">
-      <div class="tl-label"></div>
-      <div class="ruler-lane" id="rulerLane"></div>
-    </div>
-    <div class="timeline-body" id="timelineBody">
-      <div class="tl-playhead" id="tlPlayhead"></div>
-      <div id="timelineRows"></div>
-      <div class="tl-empty-state" id="tlEmptyState">Set a track's motion to <strong>Path</strong> to start placing keyframes here — or just drag its dot while the mix is playing to record a move live.</div>
+    <div class="timeline-scroll" id="timelineScroll">
+      <div class="timeline-header-row">
+        <div class="tl-label"></div>
+        <div class="ruler-lane" id="rulerLane"></div>
+      </div>
+      <div class="timeline-body" id="timelineBody">
+        <div class="tl-playhead" id="tlPlayhead"></div>
+        <div id="timelineRows"></div>
+        <div class="tl-empty-state" id="tlEmptyState">Set a track's motion to <strong>Path</strong> to start placing keyframes here — or just drag its dot while the mix is playing to record a move live.</div>
+      </div>
     </div>
   </div>
 
@@ -586,6 +643,8 @@
     g.setAttribute("class","track-dot");
     g.setAttribute("data-id", track.id);
 
+    const hitArea = document.createElementNS("http://www.w3.org/2000/svg","circle");
+    hitArea.setAttribute("r", 20); hitArea.setAttribute("fill", "transparent");
     const glow = document.createElementNS("http://www.w3.org/2000/svg","circle");
     glow.setAttribute("r", 13); glow.setAttribute("fill", track.color); glow.setAttribute("opacity", "0.18");
     const dot = document.createElementNS("http://www.w3.org/2000/svg","circle");
@@ -595,7 +654,7 @@
     label.setAttribute("class","track-label"); label.setAttribute("x", 10); label.setAttribute("y", -8);
     label.textContent = trimName(track.name);
 
-    g.appendChild(glow); g.appendChild(dot); g.appendChild(label);
+    g.appendChild(hitArea); g.appendChild(glow); g.appendChild(dot); g.appendChild(label);
     g.setAttribute("transform", `translate(${px},${py})`);
     dotsGroup.appendChild(g);
 
