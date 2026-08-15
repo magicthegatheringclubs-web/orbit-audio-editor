@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ORBIT — 3D / 8D Audio Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #07090c;
+    --panel: #10141a;
+    --panel-2: #151b23;
+    --line: #232b35;
+    --line-soft: #1a2028;
+    --text: #e9edf1;
+    --text-dim: #7c8798;
+    --text-dimmer: #4d5765;
+    --accent: #5eead4;
+    --accent-dim: #2c5f57;
+    --danger: #f97362;
+    --radius: 10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: radial-gradient(1200px 800px at 50% -10%, #0d1218 0%, #07090c 55%), var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono{ font-family: 'JetBrains Mono', monospace; }
+
+  .app{ max-width: 1320px; margin: 0 auto; padding: 22px 22px 60px; }
+
+  header.top{
+    display:flex; align-items:center; justify-content:space-between;
+    gap: 18px; flex-wrap: wrap;
+    margin-bottom: 22px; padding-bottom: 18px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .brand{ display:flex; align-items:center; gap:12px; }
+  .brand .mark{ width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--accent); position: relative; flex-shrink:0; }
+  .brand .mark::before, .brand .mark::after{ content:""; position:absolute; border: 1px solid var(--accent-dim); border-radius:50%; }
+  .brand .mark::before{ inset: 7px; }
+  .brand .mark::after{ inset: 13px; background: var(--accent); border:none; }
+  .brand h1{ font-size: 19px; letter-spacing: 0.14em; margin: 0; font-weight: 700; }
+  .brand p{ margin: 2px 0 0; font-size: 11px; color: var(--text-dim); letter-spacing: 0.04em; }
+
+  .header-controls{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+
+  .transport{
+    display:flex; align-items:center; gap: 14px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 9px 16px;
+  }
+  .tbtn{
+    background: transparent; border: 1px solid var(--line); color: var(--text);
+    width: 34px; height: 34px; border-radius: 8px; cursor: pointer;
+    display:flex; align-items:center; justify-content:center; font-size: 14px;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  .tbtn:hover{ border-color: var(--accent); color: var(--accent); }
+  .tbtn.primary{ background: var(--accent); color: #06201c; border-color: var(--accent); }
+  .tbtn.primary:hover{ opacity:.88; color:#06201c; }
+  .time{ font-size: 12px; color: var(--text-dim); letter-spacing: 0.03em; min-width: 92px; text-align:center;}
+  .seek{ -webkit-appearance:none; width: 160px; height: 3px; background: var(--line); border-radius: 2px; outline:none; }
+  .seek::-webkit-slider-thumb{ -webkit-appearance:none; width:11px;height:11px;border-radius:50%; background: var(--accent); cursor:pointer; box-shadow: 0 0 0 3px rgba(94,234,212,0.15); }
+
+  .export-group{
+    display:flex; align-items:center; gap:10px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 9px 16px;
+  }
+  .export-btn{
+    background: transparent; border:1px solid var(--accent); color: var(--accent);
+    font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:12px;
+    padding: 7px 14px; border-radius: 7px; cursor:pointer; letter-spacing:0.02em;
+    display:flex; align-items:center; gap:7px;
+    transition: background .15s, color .15s;
+  }
+  .export-btn:hover{ background: var(--accent); color:#06201c; }
+  .export-btn:disabled{ opacity:.5; cursor:default; background:transparent; color:var(--accent); }
+  .export-status{ font-size: 10.5px; color: var(--text-dim); min-width: 90px; }
+
+  /* ---------- Main grid ---------- */
+  .grid{ display:grid; grid-template-columns: minmax(340px, 560px) 1fr; gap: 20px; align-items:start; }
+  @media (max-width: 880px){ .grid{ grid-template-columns: 1fr; } }
+
+  .panel{ background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
+  .panel-title{ display:flex; align-items:center; justify-content:space-between; margin-bottom: 14px; }
+  .panel-title h2{ font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim); margin:0; font-weight:600; }
+  .hint{ font-size: 11px; color: var(--text-dimmer); }
+
+  /* ---------- Orbit visualization ---------- */
+  .orbit-wrap{ position: relative; }
+  #orbitSvg{ width:100%; height:auto; display:block; touch-action:none; }
+  .ring{ fill:none; stroke: var(--line); stroke-width:1; }
+  .axis{ stroke: var(--line-soft); stroke-width:1; stroke-dasharray: 2 4; }
+  .ring-label{ fill: var(--text-dimmer); font-size:8px; font-family:'JetBrains Mono', monospace; }
+  .sweep{ transform-origin: 170px 170px; }
+  .listener-icon path, .listener-icon circle{ fill: var(--text); }
+  .orbit-path{ fill:none; stroke-width:1; stroke-dasharray: 1 4; opacity:.55; }
+  .kf-path-line{ fill:none; stroke-width: 1.2; stroke-dasharray: 3 3; opacity: .6; }
+  .kf-path-dot{ opacity: .7; }
+  .track-dot{ cursor: grab; }
+  .track-dot:active{ cursor: grabbing; }
+  .track-label{ font-size: 9px; font-family:'JetBrains Mono', monospace; fill: var(--text-dim); pointer-events:none; }
+
+  .empty-orbit{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    text-align:center; color: var(--text-dimmer); font-size: 12.5px; padding: 40px; pointer-events:none;
+  }
+
+  /* ---------- Upload zone ---------- */
+  .dropzone{
+    margin-top: 14px; border: 1.5px dashed var(--line); border-radius: 8px; padding: 16px;
+    text-align:center; color: var(--text-dim); font-size: 12.5px; cursor:pointer;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  .dropzone:hover, .dropzone.drag{ border-color: var(--accent); color: var(--accent); background: rgba(94,234,212,0.04); }
+  .dropzone span.key{ color: var(--text); font-weight:600; }
+
+  /* ---------- Track list ---------- */
+  .tracks-panel{ max-height: 460px; overflow-y:auto; }
+  .add-btn{
+    background: var(--accent); color: #06201c; border:none; font-family:'Space Grotesk',sans-serif;
+    font-weight:600; font-size: 11.5px; letter-spacing: 0.03em; padding: 7px 12px; border-radius: 7px; cursor:pointer;
+  }
+  .add-btn:hover{ opacity: .88; }
+
+  .track-card{
+    background: var(--panel-2); border: 1px solid var(--line); border-left: 3px solid var(--dot-color, var(--accent));
+    border-radius: 8px; padding: 12px 14px; margin-bottom: 10px;
+  }
+  .track-top{ display:flex; align-items:center; gap:10px; margin-bottom: 10px; }
+  .swatch{ width: 9px; height:9px; border-radius:50%; background: var(--dot-color, var(--accent)); flex-shrink:0; box-shadow: 0 0 8px var(--dot-color, var(--accent)); }
+  .track-name{ flex:1; font-size: 12.5px; font-weight: 600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .meter{ width: 40px; height: 5px; background: var(--line); border-radius: 3px; overflow:hidden; flex-shrink:0; }
+  .meter-fill{ height:100%; width:0%; background: var(--dot-color, var(--accent)); transition: width 60ms linear; }
+  .icon-btn{ background: transparent; border:none; color: var(--text-dim); cursor:pointer; font-size:13px; width:24px; height:24px; display:flex; align-items:center; justify-content:center; border-radius:5px; }
+  .icon-btn:hover{ color: var(--text); background: rgba(255,255,255,0.05); }
+  .icon-btn.on{ color: var(--accent); }
+  .icon-btn.danger:hover{ color: var(--danger); }
+
+  .row{ display:flex; align-items:center; gap:10px; margin-bottom:7px; }
+  .row label{ font-size: 10px; color: var(--text-dim); width: 46px; flex-shrink:0; letter-spacing:0.03em; text-transform:uppercase; }
+  .row input[type=range]{ -webkit-appearance:none; flex:1; height:3px; background: var(--line); border-radius:2px; outline:none; }
+  .row input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:10px;height:10px;border-radius:50%; background: var(--dot-color, var(--accent)); cursor:pointer; }
+  .row .val{ font-size: 10px; color: var(--text-dimmer); width:30px; text-align:right; flex-shrink:0;}
+
+  .mode-group{ display:flex; gap:4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line-soft); }
+  .mode-btn{
+    flex:1; background: var(--panel); border:1px solid var(--line); color: var(--text-dim);
+    font-size: 10px; letter-spacing:0.04em; text-transform:uppercase; padding: 6px 4px; border-radius:6px; cursor:pointer;
+    font-family:'Space Grotesk',sans-serif;
+  }
+  .mode-btn.active{ color: #06201c; background: var(--dot-color, var(--accent)); border-color: var(--dot-color, var(--accent)); font-weight:600; }
+
+  .mode-extra{ margin-top:8px; }
+  .orbit-controls, .keyframe-controls{ display:flex; align-items:center; gap:8px; }
+  .dir-btn{ background: var(--panel); border:1px solid var(--line); color: var(--text-dim); border-radius:6px; width:24px;height:24px; cursor:pointer; font-size:11px; flex-shrink:0; }
+  .dir-btn.active{ color: var(--accent); border-color: var(--accent-dim); }
+  .speed-slider{ flex:1; }
+  .kf-mini-btn{
+    background: var(--panel); border:1px solid var(--line); color: var(--text-dim); border-radius:6px;
+    padding: 5px 9px; font-size: 10.5px; cursor:pointer; font-family:'Space Grotesk',sans-serif;
+  }
+  .kf-mini-btn:hover{ border-color: var(--dot-color, var(--accent)); color: var(--dot-color, var(--accent)); }
+  .kf-count{ font-size: 10px; color: var(--text-dimmer); margin-left:auto; }
+
+  .empty-state{ text-align:center; color: var(--text-dimmer); font-size: 12.5px; padding: 30px 10px; }
+
+  /* ---------- Timeline ---------- */
+  .timeline-panel{ margin-top: 20px; }
+  .tl-label{ width: 150px; flex-shrink:0; font-size: 11.5px; display:flex; align-items:center; gap:7px; padding-right: 10px; overflow:hidden; }
+  .tl-label .swatch{ flex-shrink:0; }
+  .tl-label span.name{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tl-label span.mode-tag{ font-size:9px; color: var(--text-dimmer); font-family:'JetBrains Mono',monospace; flex-shrink:0; }
+
+  .timeline-header-row{ display:flex; align-items:flex-end; height: 26px; margin-bottom: 6px; }
+  .ruler-lane{ flex:1; position:relative; height: 100%; cursor: pointer; }
+  .ruler-tick{ position:absolute; bottom:0; transform: translateX(-1px); }
+  .tick-line{ display:block; width:1px; height:6px; background: var(--line); margin: 0 auto; }
+  .tick-label{ display:block; font-size: 9px; color: var(--text-dimmer); transform: translateX(-50%); white-space:nowrap; margin-top:2px; }
+
+  .timeline-body{ position:relative; }
+  .tl-playhead{ position:absolute; top:0; bottom:0; width:1px; background: var(--accent); box-shadow: 0 0 6px var(--accent); z-index:5; pointer-events:none; display:none; }
+
+  .tl-row{ display:flex; align-items:center; min-height: 36px; border-bottom: 1px solid var(--line-soft); }
+  .tl-row:last-child{ border-bottom:none; }
+  .tl-lane{ flex:1; position:relative; height: 36px; cursor: pointer; background: repeating-linear-gradient(90deg, transparent, transparent 49px, var(--line-soft) 49px, var(--line-soft) 50px); }
+  .kf-diamond{
+    position:absolute; top:50%; width:10px; height:10px;
+    background: var(--dot-color, var(--accent));
+    border: 1.5px solid #07090c;
+    transform: translate(-50%,-50%) rotate(45deg);
+    cursor: grab;
+    box-shadow: 0 0 5px var(--dot-color, var(--accent));
+  }
+  .kf-diamond:active{ cursor: grabbing; }
+  .tl-empty-lane{ position:absolute; inset:0; display:flex; align-items:center; padding-left:10px; font-size:10.5px; color: var(--text-dimmer); pointer-events:none; }
+
+  .tl-empty-state{ text-align:center; color: var(--text-dimmer); font-size:12.5px; padding: 24px 10px; }
+
+  ::-webkit-scrollbar{ width:8px; }
+  ::-webkit-scrollbar-track{ background: transparent; }
+  ::-webkit-scrollbar-thumb{ background: var(--line); border-radius: 4px; }
+
+  footer{ margin-top: 18px; font-size: 11px; color: var(--text-dimmer); text-align:center; letter-spacing: 0.02em; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="mark"></div>
+      <div>
+        <h1>ORBIT</h1>
+        <p>3D SPATIAL &amp; 8D AUDIO EDITOR</p>
+      </div>
+    </div>
+    <div class="header-controls">
+      <div class="transport">
+        <button class="tbtn primary" id="playBtn" title="Play / Pause">▶</button>
+        <button class="tbtn" id="stopBtn" title="Stop">■</button>
+        <span class="time mono" id="timeDisplay">00:00 / 00:00</span>
+        <input type="range" class="seek" id="seekBar" min="0" max="1000" value="0">
+      </div>
+      <div class="export-group">
+        <button class="export-btn" id="exportBtn">⭳ Export mix</button>
+        <span class="export-status mono" id="exportStatus"></span>
+      </div>
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- Orbit Visualization -->
+    <div class="panel">
+      <div class="panel-title">
+        <h2>Spatial Field — drag a source to move it</h2>
+        <span class="hint mono">top-down view</span>
+      </div>
+      <div class="orbit-wrap">
+        <svg id="orbitSvg" viewBox="0 0 340 340" xmlns="http://www.w3.org/2000/svg">
+          <g id="ringsGroup"></g>
+          <line class="axis" x1="170" y1="20" x2="170" y2="320"></line>
+          <line class="axis" x1="20" y1="170" x2="320" y2="170"></line>
+          <text class="ring-label" x="174" y="30">FRONT</text>
+          <text class="ring-label" x="174" y="314">BACK</text>
+          <g id="sweepGroup" class="sweep"></g>
+          <g id="pathsGroup"></g>
+          <g id="listenerGroup" class="listener-icon" transform="translate(170,170)">
+            <circle cx="0" cy="0" r="4.5"></circle>
+            <path d="M -6 6 Q 0 -2 6 6 Z" opacity="0.85"></path>
+          </g>
+          <g id="dotsGroup"></g>
+        </svg>
+        <div class="empty-orbit" id="emptyOrbit">No sources yet. Add a track to see it appear here.</div>
+      </div>
+      <div class="dropzone" id="dropzone">
+        Drop audio files here, or <span class="key">click to browse</span> — each file becomes its own track
+      </div>
+      <input type="file" id="fileInput" accept="audio/*" multiple style="display:none">
+    </div>
+
+    <!-- Track List -->
+    <div class="panel tracks-panel">
+      <div class="panel-title">
+        <h2>Tracks</h2>
+        <button class="add-btn" id="addBtn">+ Add track</button>
+      </div>
+      <div id="trackList">
+        <div class="empty-state" id="emptyTracks">Upload audio to start building your mix.<br>Static, Orbit, or Path — each track picks its own way of moving through space.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timeline -->
+  <div class="panel timeline-panel">
+    <div class="panel-title">
+      <h2>Timeline</h2>
+      <span class="hint mono">drag a diamond to retime · click a diamond to delete it</span>
+    </div>
+    <div class="timeline-header-row">
+      <div class="tl-label"></div>
+      <div class="ruler-lane" id="rulerLane"></div>
+    </div>
+    <div class="timeline-body" id="timelineBody">
+      <div class="tl-playhead" id="tlPlayhead"></div>
+      <div id="timelineRows"></div>
+      <div class="tl-empty-state" id="tlEmptyState">Set a track's motion to <strong>Path</strong> to start placing keyframes here — or just drag its dot while the mix is playing to record a move live.</div>
+    </div>
+  </div>
+
+  <footer>Positions render through the Web Audio API's HRTF 3D panner. Export renders offline and downloads a WAV. Headphones recommended.</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const PALETTE = ["#f97362","#fbbf24","#5eead4","#a78bfa","#60a5fa","#f472b6","#84cc16","#fb923c"];
+  const SCALE = 26;
+  const CENTER = 170;
+  const MAX_RADIUS_UNITS = 5.5;
+  const KF_EPS = 0.05;
+
+  let audioCtx = null;
+  let tracks = [];
+  let trackIdCounter = 0;
+  let isPlaying = false;
+  let rafId = null;
+  let seeking = false;
+  let lastKnownDuration = -1;
+
+  const svg = document.getElementById('orbitSvg');
+  const dotsGroup = document.getElementById('dotsGroup');
+  const pathsGroup = document.getElementById('pathsGroup');
+  const ringsGroup = document.getElementById('ringsGroup');
+  const sweepGroup = document.getElementById('sweepGroup');
+  const trackList = document.getElementById('trackList');
+  const emptyTracks = document.getElementById('emptyTracks');
+  const emptyOrbit = document.getElementById('emptyOrbit');
+  const playBtn = document.getElementById('playBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const seekBar = document.getElementById('seekBar');
+  const timeDisplay = document.getElementById('timeDisplay');
+  const fileInput = document.getElementById('fileInput');
+  const dropzone = document.getElementById('dropzone');
+  const addBtn = document.getElementById('addBtn');
+  const exportBtn = document.getElementById('exportBtn');
+  const exportStatus = document.getElementById('exportStatus');
+  const rulerLane = document.getElementById('rulerLane');
+  const timelineBody = document.getElementById('timelineBody');
+  const tlPlayhead = document.getElementById('tlPlayhead');
+  const timelineRows = document.getElementById('timelineRows');
+  const tlEmptyState = document.getElementById('tlEmptyState');
+
+  // ---------- Static rings ----------
+  function drawRings(){
+    ringsGroup.innerHTML = "";
+    [1.5, 3, MAX_RADIUS_UNITS].forEach(d=>{
+      const c = document.createElementNS("http://www.w3.org/2000/svg","circle");
+      c.setAttribute("cx", CENTER); c.setAttribute("cy", CENTER); c.setAttribute("r", d*SCALE);
+      c.setAttribute("class","ring");
+      ringsGroup.appendChild(c);
+    });
+    sweepGroup.innerHTML = "";
+    const defs = document.createElementNS("http://www.w3.org/2000/svg","defs");
+    defs.innerHTML = `<linearGradient id="sweepGrad" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#5eead4" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#5eead4" stop-opacity="0.5"/>
+    </linearGradient>`;
+    sweepGroup.appendChild(defs);
+    const sweepLine = document.createElementNS("http://www.w3.org/2000/svg","line");
+    sweepLine.setAttribute("x1", CENTER); sweepLine.setAttribute("y1", CENTER);
+    sweepLine.setAttribute("x2", CENTER); sweepLine.setAttribute("y2", CENTER - MAX_RADIUS_UNITS*SCALE);
+    sweepLine.setAttribute("stroke", "url(#sweepGrad)");
+    sweepLine.setAttribute("stroke-width", "1.4");
+    sweepGroup.appendChild(sweepLine);
+  }
+  drawRings();
+
+  function getAudioCtx(){
+    if(!audioCtx){
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const l = audioCtx.listener;
+      if(l.forwardX){
+        l.forwardX.value = 0; l.forwardY.value = 0; l.forwardZ.value = -1;
+        l.upX.value = 0; l.upY.value = 1; l.upZ.value = 0;
+        l.positionX.value = 0; l.positionY.value = 0; l.positionZ.value = 0;
+      } else if(l.setOrientation){
+        l.setOrientation(0,0,-1, 0,1,0);
+        l.setPosition(0,0,0);
+      }
+    }
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+
+  function configurePanner(p){
+    p.panningModel = "HRTF";
+    p.distanceModel = "inverse";
+    p.refDistance = 1;
+    p.maxDistance = 10000;
+    p.rolloffFactor = 1;
+    p.coneInnerAngle = 360;
+  }
+
+  function fmtTime(s){
+    if(!isFinite(s) || s < 0) s = 0;
+    const m = Math.floor(s/60);
+    const sec = Math.floor(s%60);
+    return String(m).padStart(2,'0')+":"+String(sec).padStart(2,'0');
+  }
+
+  function longestDuration(){
+    let max = 0;
+    tracks.forEach(t=>{ if(isFinite(t.audioEl.duration)) max = Math.max(max, t.audioEl.duration); });
+    return max;
+  }
+  function currentPlaybackTime(){
+    if(!tracks.length) return 0;
+    return Math.max(0, ...tracks.map(t=>t.audioEl.currentTime||0));
+  }
+  function seekTo(time){
+    const dur = longestDuration();
+    const t = Math.max(0, Math.min(dur, time));
+    tracks.forEach(tr=>{ tr.audioEl.currentTime = Math.min(t, tr.audioEl.duration || t); });
+    updateTimeDisplay();
+    updateAllPositionsNow();
+  }
+
+  // ---------- Motion model ----------
+  function interpolateKeyframes(kfs, t){
+    if(kfs.length === 0) return null;
+    if(t <= kfs[0].time){ const k=kfs[0]; return {x:k.x,y:k.y,z:k.z}; }
+    const last = kfs[kfs.length-1];
+    if(t >= last.time) return {x:last.x,y:last.y,z:last.z};
+    for(let i=0;i<kfs.length-1;i++){
+      const a = kfs[i], b = kfs[i+1];
+      if(t >= a.time && t <= b.time){
+        const span = (b.time - a.time) || 1;
+        const r = (t - a.time)/span;
+        return { x: a.x + (b.x-a.x)*r, y: a.y + (b.y-a.y)*r, z: a.z + (b.z-a.z)*r };
+      }
+    }
+    return {x:last.x,y:last.y,z:last.z};
+  }
+
+  function getPositionAtTime(track, t){
+    if(track.mode === 'orbit'){
+      const angle = track.orbitPhaseAngle + track.rotateSpeed*track.rotateDir*(t - track.orbitPhaseTime);
+      return { x: track.radius*Math.sin(angle), y: track.y, z: -track.radius*Math.cos(angle) };
+    }
+    if(track.mode === 'keyframe'){
+      const p = interpolateKeyframes(track.keyframes, t);
+      return p || { x: track.x, y: track.y, z: track.z };
+    }
+    return { x: track.x, y: track.y, z: track.z };
+  }
+
+  function addOrUpdateKeyframe(track, time, x, y, z){
+    let existing = track.keyframes.find(k=>Math.abs(k.time-time) < KF_EPS);
+    if(existing){ existing.x=x; existing.y=y; existing.z=z; }
+    else{ track.keyframes.push({time,x,y,z}); track.keyframes.sort((a,b)=>a.time-b.time); }
+    updateKfCount(track);
+  }
+
+  function setPannerPosition(track){
+    const p = track.pannerNode;
+    if(p.positionX){ p.positionX.value = track.x; p.positionY.value = track.y; p.positionZ.value = track.z; }
+    else if(p.setPosition){ p.setPosition(track.x, track.y, track.z); }
+  }
+
+  // ---------- Track creation ----------
+  function addTrackFromFile(file){
+    const ctx = getAudioCtx();
+    const id = ++trackIdCounter;
+    const color = PALETTE[(id-1) % PALETTE.length];
+
+    const audioEl = new Audio();
+    audioEl.src = URL.createObjectURL(file);
+    audioEl.crossOrigin = "anonymous";
+    audioEl.loop = false;
+
+    const sourceNode = ctx.createMediaElementSource(audioEl);
+    const gainNode = ctx.createGain();
+    const pannerNode = ctx.createPanner();
+    configurePanner(pannerNode);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 256;
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+    sourceNode.connect(gainNode);
+    gainNode.connect(pannerNode);
+    pannerNode.connect(analyser);
+    analyser.connect(ctx.destination);
+
+    const initAngle = ((id-1) * 137.5) * Math.PI/180;
+    const initRadius = 2.5;
+
+    const track = {
+      id, color, name: file.name, file,
+      audioEl, sourceNode, gainNode, pannerNode, analyser, dataArray,
+      x: initRadius * Math.sin(initAngle),
+      y: 0,
+      z: -initRadius * Math.cos(initAngle),
+      angle: initAngle,
+      radius: initRadius,
+      mode: 'static',
+      rotateSpeed: 0.5,
+      rotateDir: 1,
+      orbitPhaseAngle: initAngle,
+      orbitPhaseTime: 0,
+      keyframes: [],
+      muted: false,
+      volume: 0.85,
+      dragging: false,
+      lastRecordTs: 0
+    };
+    gainNode.gain.value = track.volume;
+    setPannerPosition(track);
+
+    tracks.push(track);
+    renderTrackCard(track);
+    renderDot(track);
+    renderTimelineRow(track);
+    updateEmptyStates();
+
+    audioEl.addEventListener('loadedmetadata', ()=>{ updateTimeDisplay(); refreshTimelineVisuals(); });
+    audioEl.addEventListener('ended', ()=>{
+      const anyPlaying = tracks.some(t=>!t.audioEl.paused);
+      if(!anyPlaying){ isPlaying = false; playBtn.textContent = "▶"; }
+    });
+  }
+
+  // ---------- Orbit dot rendering ----------
+  function renderDot(track){
+    const px = CENTER + track.x * SCALE;
+    const py = CENTER + track.z * SCALE;
+
+    const orbitPath = document.createElementNS("http://www.w3.org/2000/svg","circle");
+    orbitPath.setAttribute("cx", CENTER); orbitPath.setAttribute("cy", CENTER);
+    orbitPath.setAttribute("r", track.radius * SCALE);
+    orbitPath.setAttribute("class","orbit-path");
+    orbitPath.setAttribute("stroke", track.color);
+    orbitPath.style.display = 'none';
+    pathsGroup.appendChild(orbitPath);
+    track._orbitPath = orbitPath;
+
+    const kfGroup = document.createElementNS("http://www.w3.org/2000/svg","g");
+    pathsGroup.appendChild(kfGroup);
+    track._kfGroup = kfGroup;
+
+    const g = document.createElementNS("http://www.w3.org/2000/svg","g");
+    g.setAttribute("class","track-dot");
+    g.setAttribute("data-id", track.id);
+
+    const glow = document.createElementNS("http://www.w3.org/2000/svg","circle");
+    glow.setAttribute("r", 13); glow.setAttribute("fill", track.color); glow.setAttribute("opacity", "0.18");
+    const dot = document.createElementNS("http://www.w3.org/2000/svg","circle");
+    dot.setAttribute("r", 6.5); dot.setAttribute("fill", track.color);
+    dot.setAttribute("stroke", "#07090c"); dot.setAttribute("stroke-width", "1.5");
+    const label = document.createElementNS("http://www.w3.org/2000/svg","text");
+    label.setAttribute("class","track-label"); label.setAttribute("x", 10); label.setAttribute("y", -8);
+    label.textContent = trimName(track.name);
+
+    g.appendChild(glow); g.appendChild(dot); g.appendChild(label);
+    g.setAttribute("transform", `translate(${px},${py})`);
+    dotsGroup.appendChild(g);
+
+    track._dotG = g; track._glow = glow;
+
+    g.addEventListener('pointerdown', (e)=>{
+      track.dragging = true;
+      g.setPointerCapture(e.pointerId);
+    });
+    g.addEventListener('pointermove', (e)=>{
+      if(!track.dragging) return;
+      const rect = svg.getBoundingClientRect();
+      const scaleFactor = 340 / rect.width;
+      const sx = (e.clientX - rect.left) * scaleFactor;
+      const sy = (e.clientY - rect.top) * scaleFactor;
+      let ux = (sx - CENTER) / SCALE;
+      let uz = (sy - CENTER) / SCALE;
+      const r = Math.sqrt(ux*ux + uz*uz);
+      if(r > MAX_RADIUS_UNITS){ ux = ux/r*MAX_RADIUS_UNITS; uz = uz/r*MAX_RADIUS_UNITS; }
+
+      if(track.mode === 'static'){
+        track.x = ux; track.z = uz;
+        setPannerPosition(track); positionDot(track);
+      } else if(track.mode === 'orbit'){
+        track.radius = Math.sqrt(ux*ux+uz*uz);
+        track.angle = Math.atan2(ux, -uz);
+        track.x = ux; track.z = uz;
+        setPannerPosition(track);
+        positionDot(track);
+        track._orbitPath.setAttribute("r", track.radius*SCALE);
+      } else if(track.mode === 'keyframe'){
+        track.x = ux; track.z = uz;
+        setPannerPosition(track); positionDot(track);
+        const now = performance.now();
+        if(now - track.lastRecordTs > 80){
+          track.lastRecordTs = now;
+          addOrUpdateKeyframe(track, currentPlaybackTime(), ux, track.y, uz);
+          renderTimelineLane(track);
+          renderKeyframeVisuals(track);
+        }
+      }
+    });
+    function endDrag(){
+      if(!track.dragging) return;
+      track.dragging = false;
+      if(track.mode === 'orbit'){
+        track.orbitPhaseAngle = track.angle;
+        track.orbitPhaseTime = currentPlaybackTime();
+      } else if(track.mode === 'keyframe'){
+        addOrUpdateKeyframe(track, currentPlaybackTime(), track.x, track.y, track.z);
+        renderTimelineLane(track);
+        renderKeyframeVisuals(track);
+      }
+    }
+    g.addEventListener('pointerup', endDrag);
+    g.addEventListener('pointercancel', endDrag);
+  }
+
+  function trimName(name){
+    const base = name.replace(/\.[^/.]+$/, "");
+    return base.length > 16 ? base.slice(0,15)+"…" : base;
+  }
+  function positionDot(track){
+    const px = CENTER + track.x * SCALE;
+    const py = CENTER + track.z * SCALE;
+    track._dotG.setAttribute("transform", `translate(${px},${py})`);
+  }
+  function removeDot(track){
+    if(track._dotG) track._dotG.remove();
+    if(track._orbitPath) track._orbitPath.remove();
+    if(track._kfGroup) track._kfGroup.remove();
+  }
+  function renderKeyframeVisuals(track){
+    track._kfGroup.innerHTML = "";
+    if(track.mode !== 'keyframe' || track.keyframes.length === 0) return;
+    const pts = track.keyframes.map(k => `${CENTER+k.x*SCALE},${CENTER+k.z*SCALE}`).join(" ");
+    if(track.keyframes.length > 1){
+      const line = document.createElementNS("http://www.w3.org/2000/svg","polyline");
+      line.setAttribute("points", pts);
+      line.setAttribute("class","kf-path-line");
+      line.setAttribute("stroke", track.color);
+      track._kfGroup.appendChild(line);
+    }
+    track.keyframes.forEach(k=>{
+      const c = document.createElementNS("http://www.w3.org/2000/svg","circle");
+      c.setAttribute("cx", CENTER+k.x*SCALE); c.setAttribute("cy", CENTER+k.z*SCALE);
+      c.setAttribute("r", 3); c.setAttribute("fill", track.color);
+      c.setAttribute("class","kf-path-dot");
+      track._kfGroup.appendChild(c);
+    });
+  }
+
+  // ---------- Track card UI ----------
+  function renderTrackCard(track){
+    const card = document.createElement('div');
+    card.className = 'track-card';
+    card.style.setProperty('--dot-color', track.color);
+    card.dataset.id = track.id;
+
+    card.innerHTML = `
+      <div class="track-top">
+        <div class="swatch"></div>
+        <div class="track-name" title="${escapeHtml(track.name)}">${escapeHtml(trimName(track.name))}</div>
+        <div class="meter"><div class="meter-fill"></div></div>
+        <button class="icon-btn mute-btn" title="Mute">🔊</button>
+        <button class="icon-btn danger remove-btn" title="Remove track">✕</button>
+      </div>
+      <div class="row">
+        <label>Vol</label>
+        <input type="range" class="vol-slider" min="0" max="1" step="0.01" value="${track.volume}">
+        <span class="val vol-val">${Math.round(track.volume*100)}</span>
+      </div>
+      <div class="row">
+        <label>Height</label>
+        <input type="range" class="height-slider" min="-3" max="3" step="0.1" value="${track.y}">
+        <span class="val height-val">${track.y.toFixed(1)}</span>
+      </div>
+      <div class="mode-group">
+        <button class="mode-btn active" data-mode="static">Static</button>
+        <button class="mode-btn" data-mode="orbit">Orbit</button>
+        <button class="mode-btn" data-mode="keyframe">Path</button>
+      </div>
+      <div class="mode-extra">
+        <div class="orbit-controls" style="display:none;">
+          <button class="dir-btn active" title="Reverse direction">↺</button>
+          <input type="range" class="speed-slider" min="0.1" max="3" step="0.1" value="${track.rotateSpeed}">
+          <span class="val speed-val mono">${track.rotateSpeed.toFixed(1)}x</span>
+        </div>
+        <div class="keyframe-controls" style="display:none;">
+          <button class="kf-mini-btn add-point-btn">+ Point here</button>
+          <button class="kf-mini-btn clear-path-btn">Clear path</button>
+          <span class="kf-count">0 points</span>
+        </div>
+      </div>
+    `;
+    trackList.appendChild(card);
+
+    const muteBtn = card.querySelector('.mute-btn');
+    const removeBtn = card.querySelector('.remove-btn');
+    const volSlider = card.querySelector('.vol-slider');
+    const volVal = card.querySelector('.vol-val');
+    const heightSlider = card.querySelector('.height-slider');
+    const heightVal = card.querySelector('.height-val');
+    const modeBtns = card.querySelectorAll('.mode-btn');
+    const orbitControls = card.querySelector('.orbit-controls');
+    const keyframeControls = card.querySelector('.keyframe-controls');
+    const dirBtn = card.querySelector('.dir-btn');
+    const speedSlider = card.querySelector('.speed-slider');
+    const speedVal = card.querySelector('.speed-val');
+    const addPointBtn = card.querySelector('.add-point-btn');
+    const clearPathBtn = card.querySelector('.clear-path-btn');
+    const kfCount = card.querySelector('.kf-count');
+
+    track._ui = { card, muteBtn, meterFill: card.querySelector('.meter-fill'), kfCount };
+
+    muteBtn.addEventListener('click', ()=>{
+      track.muted = !track.muted;
+      track.gainNode.gain.value = track.muted ? 0 : track.volume;
+      muteBtn.textContent = track.muted ? "🔇" : "🔊";
+    });
+    removeBtn.addEventListener('click', ()=>{
+      track.audioEl.pause();
+      try{ track.sourceNode.disconnect(); track.gainNode.disconnect(); track.pannerNode.disconnect(); track.analyser.disconnect(); }catch(e){}
+      removeDot(track);
+      card.remove();
+      if(track._timelineRow) track._timelineRow.remove();
+      tracks = tracks.filter(t=>t.id !== track.id);
+      updateEmptyStates();
+      refreshTimelineVisuals();
+    });
+    volSlider.addEventListener('input', ()=>{
+      track.volume = parseFloat(volSlider.value);
+      volVal.textContent = Math.round(track.volume*100);
+      if(!track.muted) track.gainNode.gain.value = track.volume;
+    });
+    heightSlider.addEventListener('input', ()=>{
+      track.y = parseFloat(heightSlider.value);
+      heightVal.textContent = track.y.toFixed(1);
+      if(track.mode === 'keyframe'){
+        addOrUpdateKeyframe(track, currentPlaybackTime(), track.x, track.y, track.z);
+        renderTimelineLane(track);
+        renderKeyframeVisuals(track);
+      } else {
+        setPannerPosition(track);
+      }
+    });
+    modeBtns.forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const newMode = btn.dataset.mode;
+        if(newMode === track.mode) return;
+        if(newMode === 'orbit'){
+          const r = Math.sqrt(track.x*track.x + track.z*track.z);
+          track.radius = r > 0.05 ? r : 2;
+          track.angle = Math.atan2(track.x, -track.z);
+          track.orbitPhaseAngle = track.angle;
+          track.orbitPhaseTime = currentPlaybackTime();
+        }
+        track.mode = newMode;
+        modeBtns.forEach(b=>b.classList.toggle('active', b===btn));
+        orbitControls.style.display = newMode === 'orbit' ? 'flex' : 'none';
+        keyframeControls.style.display = newMode === 'keyframe' ? 'flex' : 'none';
+        track._orbitPath.style.display = newMode === 'orbit' ? '' : 'none';
+        renderKeyframeVisuals(track);
+        refreshTimelineVisuals();
+      });
+    });
+    dirBtn.addEventListener('click', ()=>{
+      track.rotateDir *= -1;
+      dirBtn.classList.toggle('active', track.rotateDir === -1);
+      dirBtn.textContent = track.rotateDir === 1 ? "↺" : "↻";
+    });
+    speedSlider.addEventListener('input', ()=>{
+      track.rotateSpeed = parseFloat(speedSlider.value);
+      speedVal.textContent = track.rotateSpeed.toFixed(1)+"x";
+    });
+    addPointBtn.addEventListener('click', ()=>{
+      addOrUpdateKeyframe(track, currentPlaybackTime(), track.x, track.y, track.z);
+      renderTimelineLane(track);
+      renderKeyframeVisuals(track);
+    });
+    clearPathBtn.addEventListener('click', ()=>{
+      track.keyframes = [];
+      updateKfCount(track);
+      renderTimelineLane(track);
+      renderKeyframeVisuals(track);
+    });
+  }
+
+  function updateKfCount(track){
+    if(track._ui && track._ui.kfCount){
+      const n = track.keyframes.length;
+      track._ui.kfCount.textContent = n + (n===1 ? ' point' : ' points');
+    }
+  }
+
+  function escapeHtml(s){
+    return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function updateEmptyStates(){
+    emptyTracks.style.display = tracks.length ? 'none' : 'block';
+    emptyOrbit.style.display = tracks.length ? 'none' : 'flex';
+    tlEmptyState.style.display = tracks.length ? 'block' : 'none';
+  }
+
+  // ---------- Timeline ----------
+  function renderTimelineRow(track){
+    const row = document.createElement('div');
+    row.className = 'tl-row';
+    row.innerHTML = `
+      <div class="tl-label">
+        <div class="swatch" style="background:${track.color}; box-shadow:0 0 8px ${track.color};"></div>
+        <span class="name" title="${escapeHtml(track.name)}">${escapeHtml(trimName(track.name))}</span>
+      </div>
+      <div class="tl-lane"></div>
+    `;
+    timelineRows.appendChild(row);
+    const lane = row.querySelector('.tl-lane');
+    track._timelineRow = row;
+    track._laneEl = lane;
+
+    lane.addEventListener('pointerdown', (e)=>{
+      if(e.target !== lane) return;
+      const rect = lane.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (e.clientX-rect.left)/rect.width));
+      seekTo(ratio * longestDuration());
+    });
+    renderTimelineLane(track);
+  }
+
+  function renderTimelineLane(track){
+    const lane = track._laneEl;
+    if(!lane) return;
+    lane.innerHTML = "";
+    const dur = longestDuration();
+    if(track.mode !== 'keyframe' || track.keyframes.length === 0 || dur <= 0){
+      const hint = document.createElement('div');
+      hint.className = 'tl-empty-lane';
+      hint.textContent = track.mode === 'keyframe' ? 'Drag the dot in the field above to place points' : (track.mode === 'orbit' ? 'Auto-orbiting — switch to Path to keyframe' : 'Static position — switch to Path to animate');
+      lane.appendChild(hint);
+      return;
+    }
+    track.keyframes.forEach(kf=>{
+      const d = document.createElement('div');
+      d.className = 'kf-diamond';
+      d.style.background = track.color;
+      d.style.left = (Math.min(1,kf.time/dur)*100)+'%';
+      d.title = fmtTime(kf.time);
+      d.addEventListener('pointerdown', (e)=>{
+        e.stopPropagation();
+        const startX = e.clientX;
+        let moved = false;
+        const laneRect = lane.getBoundingClientRect();
+        function onMove(ev){
+          if(Math.abs(ev.clientX-startX) > 4) moved = true;
+          if(moved){
+            let ratio = (ev.clientX - laneRect.left)/laneRect.width;
+            ratio = Math.max(0, Math.min(1, ratio));
+            kf.time = ratio * longestDuration();
+            d.style.left = (ratio*100)+'%';
+            d.title = fmtTime(kf.time);
+          }
+        }
+        function onUp(){
+          document.removeEventListener('pointermove', onMove);
+          document.removeEventListener('pointerup', onUp);
+          if(moved){
+            track.keyframes.sort((a,b)=>a.time-b.time);
+            renderTimelineLane(track);
+            renderKeyframeVisuals(track);
+          } else {
+            track.keyframes = track.keyframes.filter(k=>k!==kf);
+            updateKfCount(track);
+            renderTimelineLane(track);
+            renderKeyframeVisuals(track);
+          }
+        }
+        document.addEventListener('pointermove', onMove);
+        document.addEventListener('pointerup', onUp);
+      });
+      lane.appendChild(d);
+    });
+  }
+
+  function refreshTimelineVisuals(){
+    drawRuler();
+    tracks.forEach(renderTimelineLane);
+  }
+
+  function niceInterval(raw){
+    const steps = [1,2,5,10,15,30,60,120,300,600,900];
+    for(const s of steps){ if(raw <= s) return s; }
+    return Math.ceil(raw/900)*900;
+  }
+  function drawRuler(){
+    const dur = longestDuration();
+    rulerLane.innerHTML = "";
+    if(dur <= 0) return;
+    const interval = niceInterval(dur/6);
+    for(let t=0; t<=dur+0.001; t+=interval){
+      const ratio = t/dur;
+      const tick = document.createElement('div');
+      tick.className = 'ruler-tick';
+      tick.style.left = (ratio*100)+'%';
+      tick.innerHTML = `<span class="tick-line"></span><span class="tick-label mono">${fmtTime(t)}</span>`;
+      rulerLane.appendChild(tick);
+    }
+  }
+  rulerLane.addEventListener('pointerdown', (e)=>{
+    const rect = rulerLane.getBoundingClientRect();
+    const dur = longestDuration();
+    if(dur<=0) return;
+    const ratio = Math.max(0, Math.min(1, (e.clientX-rect.left)/rect.width));
+    seekTo(ratio*dur);
+  });
+
+  function updateTimelinePlayhead(t){
+    const dur = longestDuration();
+    if(dur <= 0){ tlPlayhead.style.display = 'none'; return; }
+    tlPlayhead.style.display = 'block';
+    const laneRect = rulerLane.getBoundingClientRect();
+    const bodyRect = timelineBody.getBoundingClientRect();
+    const ratio = Math.min(1, t/dur);
+    const leftPx = (laneRect.left - bodyRect.left) + ratio*laneRect.width;
+    tlPlayhead.style.left = leftPx+'px';
+  }
+
+  // ---------- File input handling ----------
+  function handleFiles(fileList){
+    const files = Array.from(fileList).filter(f => f.type.startsWith('audio/') || /\.(mp3|wav|ogg|m4a|flac|aac)$/i.test(f.name));
+    files.forEach(f => addTrackFromFile(f));
+  }
+  fileInput.addEventListener('change', e => { handleFiles(e.target.files); fileInput.value = ""; });
+  dropzone.addEventListener('click', ()=> fileInput.click());
+  addBtn.addEventListener('click', ()=> fileInput.click());
+  ['dragenter','dragover'].forEach(evt=> dropzone.addEventListener(evt, e=>{ e.preventDefault(); dropzone.classList.add('drag'); }));
+  ['dragleave','drop'].forEach(evt=> dropzone.addEventListener(evt, e=>{ e.preventDefault(); dropzone.classList.remove('drag'); }));
+  dropzone.addEventListener('drop', e=>{ if(e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
+
+  // ---------- Transport ----------
+  playBtn.addEventListener('click', ()=>{
+    if(tracks.length === 0) return;
+    if(isPlaying){
+      tracks.forEach(t=>t.audioEl.pause());
+      isPlaying = false; playBtn.textContent = "▶";
+    } else {
+      getAudioCtx();
+      tracks.forEach(t=>{ t.audioEl.play().catch(()=>{}); });
+      isPlaying = true; playBtn.textContent = "⏸";
+    }
+  });
+  stopBtn.addEventListener('click', ()=>{
+    tracks.forEach(t=>{ t.audioEl.pause(); t.audioEl.currentTime = 0; });
+    isPlaying = false; playBtn.textContent = "▶";
+    seekBar.value = 0;
+    updateTimeDisplay();
+    updateAllPositionsNow();
+  });
+  seekBar.addEventListener('input', ()=>{
+    seeking = true;
+    const dur = longestDuration();
+    seekTo((seekBar.value/1000) * dur);
+  });
+  seekBar.addEventListener('change', ()=>{ seeking = false; });
+
+  function updateTimeDisplay(){
+    const dur = longestDuration();
+    if(dur !== lastKnownDuration){ lastKnownDuration = dur; refreshTimelineVisuals(); }
+    let cur = 0;
+    if(tracks.length) cur = Math.max(...tracks.map(t=>t.audioEl.currentTime || 0));
+    timeDisplay.textContent = `${fmtTime(cur)} / ${fmtTime(dur)}`;
+    if(!seeking && dur > 0) seekBar.value = Math.min(1000, (cur/dur)*1000);
+  }
+
+  function updateAllPositionsNow(){
+    const t = currentPlaybackTime();
+    tracks.forEach(track=>{
+      if(track.dragging) return;
+      const pos = getPositionAtTime(track, t);
+      track.x = pos.x; track.y = pos.y; track.z = pos.z;
+      setPannerPosition(track);
+      positionDot(track);
+    });
+    updateTimelinePlayhead(t);
+  }
+
+  // ---------- Animation loop ----------
+  function frame(ts){
+    const t = currentPlaybackTime();
+    tracks.forEach(track=>{
+      if(!track.dragging){
+        const pos = getPositionAtTime(track, t);
+        track.x = pos.x; track.y = pos.y; track.z = pos.z;
+        setPannerPosition(track);
+        positionDot(track);
+      }
+      if(track.analyser){
+        track.analyser.getByteTimeDomainData(track.dataArray);
+        let sum = 0;
+        for(let i=0;i<track.dataArray.length;i++){ const v=(track.dataArray[i]-128)/128; sum += v*v; }
+        const rms = Math.sqrt(sum/track.dataArray.length);
+        const level = Math.min(1, rms*3.2);
+        if(track._ui) track._ui.meterFill.style.width = (level*100).toFixed(0)+"%";
+        if(track._glow) track._glow.setAttribute("r", (13 + level*14).toFixed(1));
+      }
+    });
+    updateTimelinePlayhead(t);
+    if(isPlaying) updateTimeDisplay();
+    rafId = requestAnimationFrame(frame);
+  }
+  rafId = requestAnimationFrame(frame);
+
+  // ---------- Export (offline render to WAV) ----------
+  function scheduleAutomation(track, panner, dur){
+    const setPos = (t,x,y,z,first)=>{
+      if(panner.positionX){
+        if(first){ panner.positionX.setValueAtTime(x,t); panner.positionY.setValueAtTime(y,t); panner.positionZ.setValueAtTime(z,t); }
+        else{ panner.positionX.linearRampToValueAtTime(x,t); panner.positionY.linearRampToValueAtTime(y,t); panner.positionZ.linearRampToValueAtTime(z,t); }
+      } else if(panner.setPosition){ panner.setPosition(x,y,z); }
+    };
+    if(track.mode === 'static'){ setPos(0, track.x, track.y, track.z, true); return; }
+    if(track.mode === 'orbit'){
+      const step = 0.1;
+      let first = true;
+      for(let t=0; t<=dur; t+=step){
+        const p = getPositionAtTime(track, t);
+        setPos(t, p.x, p.y, p.z, first);
+        first = false;
+      }
+      return;
+    }
+    if(track.mode === 'keyframe'){
+      const kfs = track.keyframes;
+      if(kfs.length === 0){ setPos(0, track.x, track.y, track.z, true); return; }
+      setPos(0, kfs[0].x, kfs[0].y, kfs[0].z, true);
+      if(kfs[0].time > 0) setPos(kfs[0].time, kfs[0].x, kfs[0].y, kfs[0].z, false);
+      for(let i=1;i<kfs.length;i++) setPos(kfs[i].time, kfs[i].x, kfs[i].y, kfs[i].z, false);
+    }
+  }
+
+  function audioBufferToWav(buffer){
+    const numChannels = buffer.numberOfChannels;
+    const sampleRate = buffer.sampleRate;
+    let samples;
+    if(numChannels === 2) samples = interleave(buffer.getChannelData(0), buffer.getChannelData(1));
+    else samples = buffer.getChannelData(0);
+    return encodeWAV(samples, sampleRate, numChannels);
+  }
+  function interleave(l,r){
+    const len = l.length + r.length;
+    const res = new Float32Array(len);
+    let idx = 0, i = 0;
+    while(i < l.length){ res[idx++] = l[i]; res[idx++] = r[i]; i++; }
+    return res;
+  }
+  function encodeWAV(samples, sampleRate, numChannels){
+    const bytesPerSample = 2;
+    const blockAlign = numChannels * bytesPerSample;
+    const buffer = new ArrayBuffer(44 + samples.length*bytesPerSample);
+    const view = new DataView(buffer);
+    writeString(view,0,'RIFF');
+    view.setUint32(4, 36 + samples.length*bytesPerSample, true);
+    writeString(view,8,'WAVE');
+    writeString(view,12,'fmt ');
+    view.setUint32(16,16,true);
+    view.setUint16(20,1,true);
+    view.setUint16(22,numChannels,true);
+    view.setUint32(24,sampleRate,true);
+    view.setUint32(28, sampleRate*blockAlign, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, 16, true);
+    writeString(view,36,'data');
+    view.setUint32(40, samples.length*bytesPerSample, true);
+    let offset = 44;
+    for(let i=0;i<samples.length;i++,offset+=2){
+      const s = Math.max(-1, Math.min(1, samples[i]));
+      view.setInt16(offset, s<0 ? s*0x8000 : s*0x7FFF, true);
+    }
+    return new Blob([view], {type:'audio/wav'});
+  }
+  function writeString(view, offset, str){
+    for(let i=0;i<str.length;i++) view.setUint8(offset+i, str.charCodeAt(i));
+  }
+
+  exportBtn.addEventListener('click', async ()=>{
+    if(tracks.length === 0) return;
+    const dur = longestDuration();
+    if(!dur || dur <= 0) return;
+    exportBtn.disabled = true;
+    const originalLabel = exportBtn.textContent;
+    exportBtn.textContent = "Rendering…";
+    exportStatus.textContent = "decoding audio…";
+    try{
+      const sampleRate = 44100;
+      const offlineCtx = new OfflineAudioContext(2, Math.ceil((dur+0.5)*sampleRate), sampleRate);
+      for(const track of tracks){
+        const arrBuf = await track.file.arrayBuffer();
+        const audioBuffer = await offlineCtx.decodeAudioData(arrBuf);
+        const src = offlineCtx.createBufferSource();
+        src.buffer = audioBuffer;
+        const gain = offlineCtx.createGain();
+        gain.gain.value = track.muted ? 0 : track.volume;
+        const panner = offlineCtx.createPanner();
+        configurePanner(panner);
+        src.connect(gain); gain.connect(panner); panner.connect(offlineCtx.destination);
+        scheduleAutomation(track, panner, dur);
+        src.start(0);
+      }
+      exportStatus.textContent = "rendering mix…";
+      const rendered = await offlineCtx.startRendering();
+      const wavBlob = audioBufferToWav(rendered);
+      const url = URL.createObjectURL(wavBlob);
+      const a = document.createElement('a');
+      a.href = url; a.download = "orbit-mix.wav";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 4000);
+      exportStatus.textContent = "done ✓";
+    }catch(err){
+      console.error(err);
+      exportStatus.textContent = "export failed";
+    }finally{
+      exportBtn.disabled = false;
+      exportBtn.textContent = originalLabel;
+      setTimeout(()=>{ exportStatus.textContent = ""; }, 3500);
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
