@@ -251,6 +251,78 @@
 
   .tl-empty-state{ text-align:center; color: var(--text-dimmer); font-size:12.5px; padding: 24px 10px; }
 
+  /* ---------- Volume automation lane ---------- */
+  .tl-lanes{ flex:1; display:flex; flex-direction:column; min-width:0; }
+  .tl-vol-lane{ position:relative; height: 22px; border-top: 1px dashed var(--line-soft); cursor: crosshair; background: rgba(255,255,255,0.012); }
+  .vol-poly{ position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
+  .vol-poly polyline{ fill:none; stroke-width:1.6; vector-effect:non-scaling-stroke; opacity:.8; }
+  .vol-points{ position:absolute; inset:0; }
+  .vol-point{ position:absolute; width:9px; height:9px; border-radius:50%; border:1.5px solid #07090c; transform:translate(-50%,-50%); cursor:grab; }
+  .vol-point:active{ cursor:grabbing; }
+  .vol-tag{ position:absolute; left:2px; top:1px; font-size:8px; letter-spacing:0.06em; color: var(--text-dimmer); font-family:'JetBrains Mono',monospace; pointer-events:none; }
+
+  /* ---------- Header groups: history / project / ai ---------- */
+  .history-group{ display:flex; gap:6px; }
+  .tbtn:disabled{ opacity:.35; cursor:default; }
+  .tbtn:disabled:hover{ border-color: var(--line); color: var(--text); }
+
+  /* ---------- Autosave banner ---------- */
+  .autosave-banner{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    background: var(--panel-2); border:1px solid var(--accent-dim); border-radius: var(--radius);
+    padding: 10px 14px; margin-bottom: 18px; font-size:12.5px; color: var(--text-dim);
+  }
+  .autosave-banner .spacer{ flex:1; }
+
+  /* ---------- Modals ---------- */
+  .modal-overlay{
+    position:fixed; inset:0; background: rgba(4,6,8,0.72);
+    display:flex; align-items:center; justify-content:center; z-index: 100; padding: 20px;
+    -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+  }
+  .modal-panel{
+    background: var(--panel); border:1px solid var(--line); border-radius: var(--radius);
+    padding: 20px; width: 100%; max-width: 440px; max-height: 84vh; overflow-y:auto;
+  }
+  .modal-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom: 6px; }
+  .modal-header h2{ font-size:14px; margin:0; letter-spacing:0.04em; }
+  .modal-panel .hint{ display:block; margin-bottom:16px; line-height:1.5; font-size:11.5px; }
+  .ai-section{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--line-soft); }
+  .ai-section:last-of-type{ border-bottom:none; }
+  .ai-section label{ font-size:10px; color: var(--text-dim); text-transform:uppercase; letter-spacing:0.04em; width:100%; }
+  .ai-section select{
+    flex:1; background: var(--panel-2); border:1px solid var(--line); color: var(--text);
+    font-family:'Space Grotesk',sans-serif; font-size:12px; padding:7px 8px; border-radius:6px;
+  }
+  .ai-log{
+    font-size:10.5px; color: var(--text-dim); white-space:pre-wrap; max-height:120px; overflow-y:auto;
+    background: var(--panel-2); border:1px solid var(--line-soft); border-radius:6px; padding:8px 10px; margin-top:4px;
+  }
+  .project-row{
+    display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--line-soft);
+  }
+  .project-row:last-child{ border-bottom:none; }
+  .project-row .meta{ flex:1; min-width:0; }
+  .project-row .pname{ font-size:12.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .project-row .pdate{ font-size:10.5px; color: var(--text-dimmer); }
+  .project-empty{ text-align:center; color: var(--text-dimmer); font-size:12.5px; padding:20px 10px; }
+
+  /* ---------- Export modal ---------- */
+  .export-text-input{
+    background: var(--panel-2); border:1px solid var(--line); color: var(--text);
+    font-family:'Space Grotesk',sans-serif; font-size:13px; padding:9px 10px; border-radius:6px; width:100%;
+  }
+  .export-text-input:focus{ outline:none; border-color: var(--accent-dim); }
+  .cover-picker{ display:flex; align-items:center; gap:12px; }
+  .cover-preview{
+    width:64px; height:64px; border-radius:8px; border:1px solid var(--line); background: var(--panel-2);
+    background-size:cover; background-position:center;
+    display:flex; align-items:center; justify-content:center; font-size:9.5px; color: var(--text-dimmer);
+    text-align:center; flex-shrink:0; padding:4px;
+  }
+  .format-choice{ display:flex; gap:6px; width:100%; }
+  .format-choice .format-btn{ flex:1; }
+
   ::-webkit-scrollbar{ width:8px; }
   ::-webkit-scrollbar-track{ background: transparent; }
   ::-webkit-scrollbar-thumb{ background: var(--line); border-radius: 4px; }
@@ -301,7 +373,7 @@
 
     /* Timeline: pin the track label, let the lanes scroll sideways */
     .timeline-scroll{ overflow-x: auto; }
-    .ruler-lane, .tl-lane{ min-width: 460px; }
+    .ruler-lane, .tl-lane, .tl-vol-lane{ min-width: 460px; }
     .tl-label{
       position: sticky; left: 0; z-index: 4;
       width: 58px; padding-right: 6px;
@@ -330,12 +402,29 @@
         <span class="time mono" id="timeDisplay">00:00 / 00:00</span>
         <input type="range" class="seek" id="seekBar" min="0" max="1000" value="0">
       </div>
+      <div class="history-group">
+        <button class="tbtn" id="undoBtn" title="Undo">↶</button>
+        <button class="tbtn" id="redoBtn" title="Redo">↷</button>
+      </div>
       <div class="export-group">
-        <button class="export-btn" id="exportBtn">⭳ Export mix</button>
-        <span class="export-status mono" id="exportStatus"></span>
+        <button class="export-btn" id="saveProjectBtn" title="Save your progress in this browser">💾 Save</button>
+        <button class="export-btn" id="loadProjectBtn" title="Restore a saved project">📂 Load</button>
+      </div>
+      <div class="export-group">
+        <button class="export-btn" id="aiOpenBtn" title="Automated split &amp; arrange tools">✨ AI Editor</button>
+      </div>
+      <div class="export-group">
+        <button class="export-btn" id="exportOpenBtn">⭳ Export</button>
       </div>
     </div>
   </header>
+
+  <div class="autosave-banner" id="autosaveBanner" style="display:none;">
+    <span id="autosaveBannerText"></span>
+    <span class="spacer"></span>
+    <button class="add-btn" id="autosaveRestoreBtn">Restore</button>
+    <button class="icon-btn" id="autosaveDismissBtn" title="Dismiss">✕</button>
+  </div>
 
   <div class="grid">
     <!-- Orbit Visualization -->
@@ -364,7 +453,7 @@
       <div class="dropzone" id="dropzone">
         Drop audio or video here, or <span class="key">click to browse — camera roll included</span> — each file becomes its own track
       </div>
-      <input type="file" id="fileInput" class="visually-hidden-file" accept="audio/*,video/*,.mp3,.wav,.m4a,.aac,.flac,.ogg,.caf,.aiff,.mp4,.mov,.m4v" multiple>
+      <input type="file" id="fileInput" class="visually-hidden-file" accept="audio/*,video/*" multiple>
     </div>
 
     <!-- Track List -->
@@ -401,6 +490,84 @@
   <footer>Positions render through the Web Audio API's HRTF 3D panner. Export renders offline and downloads a WAV. Headphones recommended.</footer>
 </div>
 
+<!-- AI Editor modal -->
+<div class="modal-overlay" id="aiOverlay" style="display:none;">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <h2>✨ AI EDITOR</h2>
+      <button class="icon-btn" id="aiCloseBtn" title="Close">✕</button>
+    </div>
+    <span class="hint">Automated tools that analyze your audio, cut long clips into segments on their silences, and spread everything into a moving 8D arrangement — then render it into one shareable file.</span>
+    <div class="ai-section">
+      <label>Split a track by silence</label>
+      <select id="aiSplitSelect"></select>
+      <button class="add-btn" id="aiSplitBtn">Split</button>
+    </div>
+    <div class="ai-section">
+      <button class="add-btn" id="aiArrangeBtn">Auto-orbit all tracks</button>
+      <span class="hint" style="margin:0;">Spreads every track around the listener at varied speed, radius &amp; direction.</span>
+    </div>
+    <div class="ai-section">
+      <button class="export-btn" id="aiRenderBtn">⭳ Render shareable mix</button>
+    </div>
+    <div class="ai-log mono" id="aiLog"></div>
+  </div>
+</div>
+
+<!-- Load Project modal -->
+<div class="modal-overlay" id="loadOverlay" style="display:none;">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <h2>SAVED PROJECTS</h2>
+      <button class="icon-btn" id="loadCloseBtn" title="Close">✕</button>
+    </div>
+    <span class="hint">Restoring replaces your current tracks. Saved projects include the audio itself, right in this browser — nothing to re-upload.</span>
+    <div id="projectListWrap"></div>
+  </div>
+</div>
+
+<!-- Export modal -->
+<div class="modal-overlay" id="exportOverlay" style="display:none;">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <h2>EXPORT MIX</h2>
+      <button class="icon-btn" id="exportCloseBtn" title="Close">✕</button>
+    </div>
+    <span class="hint">Renders every track's volume, panning and motion into one finished file.</span>
+
+    <div class="ai-section" style="flex-direction:column; align-items:stretch;">
+      <label>Track title</label>
+      <input type="text" id="exportNameInput" class="export-text-input" placeholder="My Mix" maxlength="120">
+    </div>
+
+    <div class="ai-section" style="flex-direction:column; align-items:stretch;">
+      <label>Cover art (optional)</label>
+      <div class="cover-picker">
+        <div class="cover-preview" id="coverPreview">No cover</div>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <button class="kf-mini-btn" id="coverChooseBtn" type="button">Choose image…</button>
+          <button class="kf-mini-btn" id="coverClearBtn" type="button" style="display:none;">Remove</button>
+        </div>
+        <input type="file" id="coverInput" accept="image/*" class="visually-hidden-file">
+      </div>
+    </div>
+
+    <div class="ai-section" style="flex-direction:column; align-items:stretch;">
+      <label>Format</label>
+      <div class="format-choice">
+        <button class="mode-btn format-btn active" data-format="m4a" type="button">M4A (AAC)</button>
+        <button class="mode-btn format-btn" data-format="wav" type="button">WAV</button>
+      </div>
+      <div class="hint" id="formatHint" style="margin:6px 0 0;"></div>
+    </div>
+
+    <div class="ai-section">
+      <button class="export-btn" id="exportRunBtn" style="flex:1;">⭳ Export</button>
+    </div>
+    <div class="ai-log mono" id="exportLog" style="display:none;"></div>
+  </div>
+</div>
+
 <script>
 (function(){
   "use strict";
@@ -434,13 +601,50 @@
   const fileInput = document.getElementById('fileInput');
   const dropzone = document.getElementById('dropzone');
   const addBtn = document.getElementById('addBtn');
-  const exportBtn = document.getElementById('exportBtn');
-  const exportStatus = document.getElementById('exportStatus');
   const rulerLane = document.getElementById('rulerLane');
   const timelineBody = document.getElementById('timelineBody');
   const tlPlayhead = document.getElementById('tlPlayhead');
   const timelineRows = document.getElementById('timelineRows');
   const tlEmptyState = document.getElementById('tlEmptyState');
+
+  const undoBtn = document.getElementById('undoBtn');
+  const redoBtn = document.getElementById('redoBtn');
+  const saveProjectBtn = document.getElementById('saveProjectBtn');
+  const loadProjectBtn = document.getElementById('loadProjectBtn');
+  const aiOpenBtn = document.getElementById('aiOpenBtn');
+  const autosaveBanner = document.getElementById('autosaveBanner');
+  const autosaveBannerText = document.getElementById('autosaveBannerText');
+  const autosaveRestoreBtn = document.getElementById('autosaveRestoreBtn');
+  const autosaveDismissBtn = document.getElementById('autosaveDismissBtn');
+  const aiOverlay = document.getElementById('aiOverlay');
+  const aiCloseBtn = document.getElementById('aiCloseBtn');
+  const aiSplitSelect = document.getElementById('aiSplitSelect');
+  const aiSplitBtn = document.getElementById('aiSplitBtn');
+  const aiArrangeBtn = document.getElementById('aiArrangeBtn');
+  const aiRenderBtn = document.getElementById('aiRenderBtn');
+  const aiLog = document.getElementById('aiLog');
+  const loadOverlay = document.getElementById('loadOverlay');
+  const loadCloseBtn = document.getElementById('loadCloseBtn');
+  const projectListWrap = document.getElementById('projectListWrap');
+  const exportOpenBtn = document.getElementById('exportOpenBtn');
+  const exportOverlay = document.getElementById('exportOverlay');
+  const exportCloseBtn = document.getElementById('exportCloseBtn');
+  const exportNameInput = document.getElementById('exportNameInput');
+  const coverInput = document.getElementById('coverInput');
+  const coverChooseBtn = document.getElementById('coverChooseBtn');
+  const coverClearBtn = document.getElementById('coverClearBtn');
+  const coverPreview = document.getElementById('coverPreview');
+  const formatHint = document.getElementById('formatHint');
+  const exportRunBtn = document.getElementById('exportRunBtn');
+  const exportLog = document.getElementById('exportLog');
+
+  // Registry of audio-graph nodes that persists for the whole session, keyed by track id.
+  // Undo/redo and project restore reconnect through this instead of re-decoding audio.
+  const nodeRegistry = new Map();
+  let suspendHistory = false;
+  let isRestoring = false;
+  let historyStack = [];
+  let redoStack = [];
 
   // ---------- Static rings ----------
   function drawRings(){
@@ -553,17 +757,140 @@
     updateKfCount(track);
   }
 
+  // ---------- Volume automation ----------
+  function getVolumeAtTime(track, t){
+    if(track.muted) return 0;
+    const pts = track.volumeAutomation;
+    if(!pts || pts.length === 0) return track.volume;
+    if(t <= pts[0].time) return pts[0].value;
+    const last = pts[pts.length-1];
+    if(t >= last.time) return last.value;
+    for(let i=0;i<pts.length-1;i++){
+      const a = pts[i], b = pts[i+1];
+      if(t >= a.time && t <= b.time){
+        const span = (b.time-a.time) || 1;
+        const r = (t-a.time)/span;
+        return a.value + (b.value-a.value)*r;
+      }
+    }
+    return last.value;
+  }
+
+  function addOrUpdateVolumeKeyframe(track, time, value){
+    value = Math.max(0, Math.min(1, value));
+    let existing = track.volumeAutomation.find(p=>Math.abs(p.time-time) < KF_EPS);
+    if(existing){ existing.value = value; }
+    else{ track.volumeAutomation.push({time, value}); track.volumeAutomation.sort((a,b)=>a.time-b.time); }
+    syncVolAutoNote(track);
+  }
+
   function setPannerPosition(track){
     const p = track.pannerNode;
     if(p.positionX){ p.positionX.value = track.x; p.positionY.value = track.y; p.positionZ.value = track.z; }
     else if(p.setPosition){ p.setPosition(track.x, track.y, track.z); }
   }
 
+  // ---------- Undo / redo ----------
+  function snapshotState(){
+    return {
+      trackOrder: tracks.map(t=>t.id),
+      tracks: tracks.map(t=>({
+        id: t.id, name: t.name, color: t.color,
+        x: t.x, y: t.y, z: t.z, angle: t.angle, radius: t.radius,
+        mode: t.mode, rotateSpeed: t.rotateSpeed, rotateDir: t.rotateDir,
+        orbitPhaseAngle: t.orbitPhaseAngle, orbitPhaseTime: t.orbitPhaseTime,
+        keyframes: JSON.parse(JSON.stringify(t.keyframes)),
+        volumeAutomation: JSON.parse(JSON.stringify(t.volumeAutomation||[])),
+        muted: t.muted, volume: t.volume
+      }))
+    };
+  }
+
+  function recordHistory(){
+    if(suspendHistory || isRestoring) return;
+    historyStack.push(snapshotState());
+    if(historyStack.length > 50) historyStack.shift();
+    redoStack = [];
+    updateHistoryButtons();
+  }
+
+  function updateHistoryButtons(){
+    undoBtn.disabled = historyStack.length === 0;
+    redoBtn.disabled = redoStack.length === 0;
+  }
+
+  function applySnapshot(snap){
+    isRestoring = true;
+    // Tear down all current UI/graph connections (nodes stay registered for reuse).
+    tracks.forEach(t=>{
+      if(t._dotG) t._dotG.remove();
+      if(t._orbitPath) t._orbitPath.remove();
+      if(t._kfGroup) t._kfGroup.remove();
+      if(t._ui && t._ui.card) t._ui.card.remove();
+      if(t._timelineRow) t._timelineRow.remove();
+      try{ t.sourceNode.disconnect(); t.gainNode.disconnect(); t.pannerNode.disconnect(); t.analyser.disconnect(); }catch(e){}
+    });
+    tracks = [];
+    const ctx = getAudioCtx();
+    snap.trackOrder.forEach(id=>{
+      const reg = nodeRegistry.get(id);
+      const data = snap.tracks.find(t=>t.id===id);
+      if(!reg || !data) return;
+      try{
+        reg.sourceNode.connect(reg.gainNode);
+        reg.gainNode.connect(reg.pannerNode);
+        reg.pannerNode.connect(reg.analyser);
+        reg.analyser.connect(ctx.destination);
+      }catch(e){}
+      const track = Object.assign({}, reg, data, { dragging:false, lastRecordTs:0 });
+      tracks.push(track);
+      renderTrackCard(track);
+      renderDot(track);
+      if(track._orbitPath) track._orbitPath.style.display = track.mode === 'orbit' ? '' : 'none';
+      renderKeyframeVisuals(track);
+      renderTimelineRow(track);
+    });
+    updateEmptyStates();
+    refreshTimelineVisuals();
+    isRestoring = false;
+  }
+
+  function undo(){
+    if(!historyStack.length) return;
+    const cur = snapshotState();
+    const prev = historyStack.pop();
+    redoStack.push(cur);
+    applySnapshot(prev);
+    updateHistoryButtons();
+    scheduleAutosave();
+  }
+  function redo(){
+    if(!redoStack.length) return;
+    const cur = snapshotState();
+    const next = redoStack.pop();
+    historyStack.push(cur);
+    applySnapshot(next);
+    updateHistoryButtons();
+    scheduleAutosave();
+  }
+  undoBtn.addEventListener('click', undo);
+  redoBtn.addEventListener('click', redo);
+  updateHistoryButtons();
+  window.addEventListener('keydown', (e)=>{
+    const meta = e.metaKey || e.ctrlKey;
+    if(!meta) return;
+    const key = e.key.toLowerCase();
+    if(key === 'z' && !e.shiftKey){ e.preventDefault(); undo(); }
+    else if((key === 'z' && e.shiftKey) || key === 'y'){ e.preventDefault(); redo(); }
+  });
+
   // ---------- Track creation ----------
-  function addTrackFromFile(file){
+  // `overrides` (optional) lets restore/undo/AI-split recreate a track with saved
+  // motion, volume-automation, and mix settings instead of the defaults.
+  function addTrackFromFile(file, overrides){
     const ctx = getAudioCtx();
     const id = ++trackIdCounter;
-    const color = PALETTE[(id-1) % PALETTE.length];
+    const color = (overrides && overrides.color) || PALETTE[(id-1) % PALETTE.length];
 
     const audioEl = new Audio();
     audioEl.src = URL.createObjectURL(file);
@@ -586,7 +913,7 @@
     const initAngle = ((id-1) * 137.5) * Math.PI/180;
     const initRadius = 2.5;
 
-    const track = {
+    const track = Object.assign({
       id, color, name: file.name, file,
       audioEl, sourceNode, gainNode, pannerNode, analyser, dataArray,
       x: initRadius * Math.sin(initAngle),
@@ -600,25 +927,67 @@
       orbitPhaseAngle: initAngle,
       orbitPhaseTime: 0,
       keyframes: [],
+      volumeAutomation: [],
       muted: false,
       volume: 0.85,
       dragging: false,
       lastRecordTs: 0
-    };
-    gainNode.gain.value = track.volume;
+    }, overrides ? stripFileFields(overrides) : {});
+    // re-attach the live nodes/file in case an override object carried stale ones
+    Object.assign(track, { id, color, name: track.name || file.name, file, audioEl, sourceNode, gainNode, pannerNode, analyser, dataArray, dragging:false, lastRecordTs:0 });
+
+    gainNode.gain.value = track.muted ? 0 : track.volume;
     setPannerPosition(track);
+
+    nodeRegistry.set(id, { file, audioEl, sourceNode, gainNode, pannerNode, analyser, dataArray, color });
 
     tracks.push(track);
     renderTrackCard(track);
     renderDot(track);
+    if(track._orbitPath) track._orbitPath.style.display = track.mode === 'orbit' ? '' : 'none';
+    renderKeyframeVisuals(track);
     renderTimelineRow(track);
     updateEmptyStates();
 
     audioEl.addEventListener('loadedmetadata', ()=>{ updateTimeDisplay(); refreshTimelineVisuals(); });
+    audioEl.addEventListener('error', ()=>{
+      // Some camera-roll clips (HEVC/H.265 .mov, certain iCloud-optimized formats) can't be
+      // decoded by this browser. Fail loudly instead of leaving a silent, dead track behind.
+      const reason = audioEl.error && audioEl.error.code === 4
+        ? "this browser can't decode that file's format"
+        : "the file failed to load";
+      if(track._ui && track._ui.card){
+        track._ui.card.style.borderLeftColor = 'var(--danger)';
+        const nameEl = track._ui.card.querySelector('.track-name');
+        if(nameEl) nameEl.textContent = `⚠ ${trimName(track.name)} — ${reason}`;
+      }
+    });
     audioEl.addEventListener('ended', ()=>{
       const anyPlaying = tracks.some(t=>!t.audioEl.paused);
       if(!anyPlaying){ isPlaying = false; playBtn.textContent = "▶"; }
     });
+
+    scheduleAutosave();
+    return track;
+  }
+
+  function stripFileFields(o){
+    const { id, file, audioEl, sourceNode, gainNode, pannerNode, analyser, dataArray, dragging, lastRecordTs, blob, type, ...rest } = o;
+    return rest;
+  }
+
+  function removeTrackById(id){
+    const track = tracks.find(t=>t.id===id);
+    if(!track) return;
+    track.audioEl.pause();
+    try{ track.sourceNode.disconnect(); track.gainNode.disconnect(); track.pannerNode.disconnect(); track.analyser.disconnect(); }catch(e){}
+    removeDot(track);
+    if(track._ui && track._ui.card) track._ui.card.remove();
+    if(track._timelineRow) track._timelineRow.remove();
+    tracks = tracks.filter(t=>t.id !== id);
+    updateEmptyStates();
+    refreshTimelineVisuals();
+    scheduleAutosave();
   }
 
   // ---------- Orbit dot rendering ----------
@@ -661,6 +1030,7 @@
     track._dotG = g; track._glow = glow;
 
     g.addEventListener('pointerdown', (e)=>{
+      recordHistory();
       track.dragging = true;
       g.setPointerCapture(e.pointerId);
     });
@@ -708,6 +1078,7 @@
         renderTimelineLane(track);
         renderKeyframeVisuals(track);
       }
+      scheduleAutosave();
     }
     g.addEventListener('pointerup', endDrag);
     g.addEventListener('pointercancel', endDrag);
@@ -766,7 +1137,9 @@
         <label>Vol</label>
         <input type="range" class="vol-slider" min="0" max="1" step="0.01" value="${track.volume}">
         <span class="val vol-val">${Math.round(track.volume*100)}</span>
+        <button class="icon-btn clear-vol-auto-btn" title="Clear volume automation" style="display:none;">↺</button>
       </div>
+      <div class="hint auto-note" style="display:none; margin:-3px 0 7px 56px;">automated — edit in timeline below</div>
       <div class="row">
         <label>Height</label>
         <input type="range" class="height-slider" min="-3" max="3" step="0.1" value="${track.y}">
@@ -796,6 +1169,8 @@
     const removeBtn = card.querySelector('.remove-btn');
     const volSlider = card.querySelector('.vol-slider');
     const volVal = card.querySelector('.vol-val');
+    const clearVolAutoBtn = card.querySelector('.clear-vol-auto-btn');
+    const autoNote = card.querySelector('.auto-note');
     const heightSlider = card.querySelector('.height-slider');
     const heightVal = card.querySelector('.height-val');
     const modeBtns = card.querySelectorAll('.mode-btn');
@@ -808,28 +1183,36 @@
     const clearPathBtn = card.querySelector('.clear-path-btn');
     const kfCount = card.querySelector('.kf-count');
 
-    track._ui = { card, muteBtn, meterFill: card.querySelector('.meter-fill'), kfCount };
+    track._ui = { card, muteBtn, meterFill: card.querySelector('.meter-fill'), kfCount, clearVolAutoBtn, autoNote };
+    muteBtn.textContent = track.muted ? "🔇" : "🔊";
+    syncVolAutoNote(track);
+    applyModeUI(track, modeBtns, orbitControls, keyframeControls, dirBtn);
 
     muteBtn.addEventListener('click', ()=>{
+      recordHistory();
       track.muted = !track.muted;
-      track.gainNode.gain.value = track.muted ? 0 : track.volume;
       muteBtn.textContent = track.muted ? "🔇" : "🔊";
+      scheduleAutosave();
     });
     removeBtn.addEventListener('click', ()=>{
-      track.audioEl.pause();
-      try{ track.sourceNode.disconnect(); track.gainNode.disconnect(); track.pannerNode.disconnect(); track.analyser.disconnect(); }catch(e){}
-      removeDot(track);
-      card.remove();
-      if(track._timelineRow) track._timelineRow.remove();
-      tracks = tracks.filter(t=>t.id !== track.id);
-      updateEmptyStates();
-      refreshTimelineVisuals();
+      recordHistory();
+      removeTrackById(track.id);
     });
+    volSlider.addEventListener('pointerdown', ()=> recordHistory());
     volSlider.addEventListener('input', ()=>{
       track.volume = parseFloat(volSlider.value);
       volVal.textContent = Math.round(track.volume*100);
-      if(!track.muted) track.gainNode.gain.value = track.volume;
+      renderVolumeLane(track);
     });
+    volSlider.addEventListener('change', ()=> scheduleAutosave());
+    clearVolAutoBtn.addEventListener('click', ()=>{
+      recordHistory();
+      track.volumeAutomation = [];
+      syncVolAutoNote(track);
+      renderVolumeLane(track);
+      scheduleAutosave();
+    });
+    heightSlider.addEventListener('pointerdown', ()=> recordHistory());
     heightSlider.addEventListener('input', ()=>{
       track.y = parseFloat(heightSlider.value);
       heightVal.textContent = track.y.toFixed(1);
@@ -841,10 +1224,12 @@
         setPannerPosition(track);
       }
     });
+    heightSlider.addEventListener('change', ()=> scheduleAutosave());
     modeBtns.forEach(btn=>{
       btn.addEventListener('click', ()=>{
         const newMode = btn.dataset.mode;
         if(newMode === track.mode) return;
+        recordHistory();
         if(newMode === 'orbit'){
           const r = Math.sqrt(track.x*track.x + track.z*track.z);
           track.radius = r > 0.05 ? r : 2;
@@ -853,34 +1238,57 @@
           track.orbitPhaseTime = currentPlaybackTime();
         }
         track.mode = newMode;
-        modeBtns.forEach(b=>b.classList.toggle('active', b===btn));
-        orbitControls.style.display = newMode === 'orbit' ? 'flex' : 'none';
-        keyframeControls.style.display = newMode === 'keyframe' ? 'flex' : 'none';
-        track._orbitPath.style.display = newMode === 'orbit' ? '' : 'none';
+        applyModeUI(track, modeBtns, orbitControls, keyframeControls, dirBtn);
         renderKeyframeVisuals(track);
         refreshTimelineVisuals();
+        scheduleAutosave();
       });
     });
     dirBtn.addEventListener('click', ()=>{
+      recordHistory();
       track.rotateDir *= -1;
       dirBtn.classList.toggle('active', track.rotateDir === -1);
       dirBtn.textContent = track.rotateDir === 1 ? "↺" : "↻";
+      scheduleAutosave();
     });
+    speedSlider.addEventListener('pointerdown', ()=> recordHistory());
     speedSlider.addEventListener('input', ()=>{
       track.rotateSpeed = parseFloat(speedSlider.value);
       speedVal.textContent = track.rotateSpeed.toFixed(1)+"x";
     });
+    speedSlider.addEventListener('change', ()=> scheduleAutosave());
     addPointBtn.addEventListener('click', ()=>{
+      recordHistory();
       addOrUpdateKeyframe(track, currentPlaybackTime(), track.x, track.y, track.z);
       renderTimelineLane(track);
       renderKeyframeVisuals(track);
+      scheduleAutosave();
     });
     clearPathBtn.addEventListener('click', ()=>{
+      recordHistory();
       track.keyframes = [];
       updateKfCount(track);
       renderTimelineLane(track);
       renderKeyframeVisuals(track);
+      scheduleAutosave();
     });
+  }
+
+  function applyModeUI(track, modeBtns, orbitControls, keyframeControls, dirBtn){
+    modeBtns.forEach(b=>b.classList.toggle('active', b.dataset.mode===track.mode));
+    orbitControls.style.display = track.mode === 'orbit' ? 'flex' : 'none';
+    keyframeControls.style.display = track.mode === 'keyframe' ? 'flex' : 'none';
+    if(track._orbitPath) track._orbitPath.style.display = track.mode === 'orbit' ? '' : 'none';
+    dirBtn.classList.toggle('active', track.rotateDir === -1);
+    dirBtn.textContent = track.rotateDir === 1 ? "↺" : "↻";
+    updateKfCount(track);
+  }
+
+  function syncVolAutoNote(track){
+    if(!track._ui) return;
+    const has = track.volumeAutomation && track.volumeAutomation.length > 0;
+    if(track._ui.clearVolAutoBtn) track._ui.clearVolAutoBtn.style.display = has ? 'inline-flex' : 'none';
+    if(track._ui.autoNote) track._ui.autoNote.style.display = has ? 'block' : 'none';
   }
 
   function updateKfCount(track){
@@ -909,12 +1317,25 @@
         <div class="swatch" style="background:${track.color}; box-shadow:0 0 8px ${track.color};"></div>
         <span class="name" title="${escapeHtml(track.name)}">${escapeHtml(trimName(track.name))}</span>
       </div>
-      <div class="tl-lane"></div>
+      <div class="tl-lanes">
+        <div class="tl-lane"></div>
+        <div class="tl-vol-lane" title="Click to add a volume point, drag a point to shape it">
+          <span class="vol-tag">VOL</span>
+          <svg class="vol-poly" viewBox="0 0 100 100" preserveAspectRatio="none"><polyline points=""></polyline></svg>
+          <div class="vol-points"></div>
+        </div>
+      </div>
     `;
     timelineRows.appendChild(row);
     const lane = row.querySelector('.tl-lane');
+    const volLane = row.querySelector('.tl-vol-lane');
+    const volPoly = row.querySelector('.vol-poly polyline');
+    const volPoints = row.querySelector('.vol-points');
     track._timelineRow = row;
     track._laneEl = lane;
+    track._volLaneEl = volLane;
+    track._volPoly = volPoly;
+    track._volPointsEl = volPoints;
 
     lane.addEventListener('pointerdown', (e)=>{
       if(e.target !== lane) return;
@@ -922,7 +1343,84 @@
       const ratio = Math.max(0, Math.min(1, (e.clientX-rect.left)/rect.width));
       seekTo(ratio * longestDuration());
     });
+
+    volLane.addEventListener('pointerdown', (e)=>{
+      // vol-point handlers call stopPropagation, so if we get here the click landed on
+      // empty lane space (not an existing point) — add a new automation point there.
+      const dur = longestDuration();
+      if(dur <= 0) return;
+      recordHistory();
+      const rect = volLane.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (e.clientX-rect.left)/rect.width));
+      const valRatio = Math.max(0, Math.min(1, 1-(e.clientY-rect.top)/rect.height));
+      addOrUpdateVolumeKeyframe(track, ratio*dur, valRatio);
+      renderVolumeLane(track);
+      scheduleAutosave();
+    });
+
     renderTimelineLane(track);
+    renderVolumeLane(track);
+  }
+
+  function renderVolumeLane(track){
+    const laneWrap = track._volLaneEl;
+    if(!laneWrap) return;
+    const dur = longestDuration();
+    track._volPointsEl.innerHTML = "";
+    if(dur <= 0){ track._volPoly.setAttribute('points',''); return; }
+
+    const pts = track.volumeAutomation;
+    const plotPts = pts.length ? pts : [{time:0, value: track.muted?0:track.volume}, {time:dur, value: track.muted?0:track.volume}];
+    const svgPts = plotPts.map(p=>{
+      const x = Math.min(100, Math.max(0,(p.time/dur)*100));
+      const y = Math.min(100, Math.max(0,(1-p.value)*100));
+      return `${x},${y}`;
+    }).join(' ');
+    track._volPoly.setAttribute('points', svgPts);
+    track._volPoly.setAttribute('stroke', track.color);
+    track._volPoly.setAttribute('stroke-dasharray', pts.length ? '' : '3 3');
+
+    pts.forEach(p=>{
+      const dot = document.createElement('div');
+      dot.className = 'vol-point';
+      dot.style.background = track.color;
+      dot.style.left = (Math.min(1, p.time/dur)*100)+'%';
+      dot.style.top = ((1-p.value)*100)+'%';
+      dot.title = `${Math.round(p.value*100)}% @ ${fmtTime(p.time)}`;
+      dot.addEventListener('pointerdown', (e)=>{
+        e.stopPropagation();
+        recordHistory();
+        const laneRect = laneWrap.getBoundingClientRect();
+        let moved = false;
+        const startX = e.clientX, startY = e.clientY;
+        function onMove(ev){
+          if(Math.abs(ev.clientX-startX) > 3 || Math.abs(ev.clientY-startY) > 3) moved = true;
+          if(moved){
+            const ratio = Math.max(0, Math.min(1, (ev.clientX-laneRect.left)/laneRect.width));
+            const valRatio = Math.max(0, Math.min(1, 1-(ev.clientY-laneRect.top)/laneRect.height));
+            p.time = ratio * longestDuration();
+            p.value = valRatio;
+            dot.style.left = (ratio*100)+'%';
+            dot.style.top = ((1-valRatio)*100)+'%';
+          }
+        }
+        function onUp(){
+          document.removeEventListener('pointermove', onMove);
+          document.removeEventListener('pointerup', onUp);
+          if(moved){
+            track.volumeAutomation.sort((a,b)=>a.time-b.time);
+          } else {
+            track.volumeAutomation = track.volumeAutomation.filter(pp=>pp!==p);
+          }
+          syncVolAutoNote(track);
+          renderVolumeLane(track);
+          scheduleAutosave();
+        }
+        document.addEventListener('pointermove', onMove);
+        document.addEventListener('pointerup', onUp);
+      });
+      track._volPointsEl.appendChild(dot);
+    });
   }
 
   function renderTimelineLane(track){
@@ -945,6 +1443,7 @@
       d.title = fmtTime(kf.time);
       d.addEventListener('pointerdown', (e)=>{
         e.stopPropagation();
+        recordHistory();
         const startX = e.clientX;
         let moved = false;
         const laneRect = lane.getBoundingClientRect();
@@ -971,6 +1470,7 @@
             renderTimelineLane(track);
             renderKeyframeVisuals(track);
           }
+          scheduleAutosave();
         }
         document.addEventListener('pointermove', onMove);
         document.addEventListener('pointerup', onUp);
@@ -981,7 +1481,7 @@
 
   function refreshTimelineVisuals(){
     drawRuler();
-    tracks.forEach(renderTimelineLane);
+    tracks.forEach(t=>{ renderTimelineLane(t); renderVolumeLane(t); });
   }
 
   function niceInterval(raw){
@@ -1036,6 +1536,7 @@
       audioExt.test(f.name) ||
       videoExt.test(f.name)
     );
+    if(files.length) recordHistory();
     files.forEach(f => addTrackFromFile(f));
 
     // iOS sometimes hands back files with an empty/odd MIME type. If nothing made it
@@ -1092,11 +1593,13 @@
   function updateAllPositionsNow(){
     const t = currentPlaybackTime();
     tracks.forEach(track=>{
-      if(track.dragging) return;
-      const pos = getPositionAtTime(track, t);
-      track.x = pos.x; track.y = pos.y; track.z = pos.z;
-      setPannerPosition(track);
-      positionDot(track);
+      if(!track.dragging){
+        const pos = getPositionAtTime(track, t);
+        track.x = pos.x; track.y = pos.y; track.z = pos.z;
+        setPannerPosition(track);
+        positionDot(track);
+      }
+      track.gainNode.gain.value = getVolumeAtTime(track, t);
     });
     updateTimelinePlayhead(t);
   }
@@ -1111,6 +1614,7 @@
         setPannerPosition(track);
         positionDot(track);
       }
+      track.gainNode.gain.value = getVolumeAtTime(track, t);
       if(track.analyser){
         track.analyser.getByteTimeDomainData(track.dataArray);
         let sum = 0;
@@ -1126,6 +1630,320 @@
     rafId = requestAnimationFrame(frame);
   }
   rafId = requestAnimationFrame(frame);
+
+  // ---------- Project persistence (IndexedDB — keeps the actual audio, no re-upload needed) ----------
+  const DB_NAME = 'orbitEditorDB';
+  const DB_STORE = 'projects';
+  function openDB(){
+    return new Promise((resolve,reject)=>{
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = ()=>{
+        if(!req.result.objectStoreNames.contains(DB_STORE)) req.result.createObjectStore(DB_STORE, {keyPath:'key'});
+      };
+      req.onsuccess = ()=>resolve(req.result);
+      req.onerror = ()=>reject(req.error);
+    });
+  }
+  async function dbPut(key, value){
+    const db = await openDB();
+    return new Promise((resolve,reject)=>{
+      const tx = db.transaction(DB_STORE,'readwrite');
+      tx.objectStore(DB_STORE).put(Object.assign({key}, value));
+      tx.oncomplete = ()=>resolve();
+      tx.onerror = ()=>reject(tx.error);
+    });
+  }
+  async function dbGet(key){
+    const db = await openDB();
+    return new Promise((resolve,reject)=>{
+      const tx = db.transaction(DB_STORE,'readonly');
+      const req = tx.objectStore(DB_STORE).get(key);
+      req.onsuccess = ()=>resolve(req.result || null);
+      req.onerror = ()=>reject(req.error);
+    });
+  }
+  async function dbGetAll(){
+    const db = await openDB();
+    return new Promise((resolve,reject)=>{
+      const tx = db.transaction(DB_STORE,'readonly');
+      const req = tx.objectStore(DB_STORE).getAll();
+      req.onsuccess = ()=>resolve(req.result || []);
+      req.onerror = ()=>reject(req.error);
+    });
+  }
+  async function dbDelete(key){
+    const db = await openDB();
+    return new Promise((resolve,reject)=>{
+      const tx = db.transaction(DB_STORE,'readwrite');
+      tx.objectStore(DB_STORE).delete(key);
+      tx.oncomplete = ()=>resolve();
+      tx.onerror = ()=>reject(tx.error);
+    });
+  }
+
+  function buildProjectData(){
+    return {
+      savedAt: Date.now(),
+      trackCount: tracks.length,
+      tracks: tracks.map(t=>({
+        name: t.name, blob: t.file, type: t.file.type, color: t.color,
+        x:t.x, y:t.y, z:t.z, angle:t.angle, radius:t.radius,
+        mode:t.mode, rotateSpeed:t.rotateSpeed, rotateDir:t.rotateDir,
+        orbitPhaseAngle:t.orbitPhaseAngle, orbitPhaseTime:t.orbitPhaseTime,
+        keyframes: t.keyframes, volumeAutomation: t.volumeAutomation||[],
+        muted:t.muted, volume:t.volume
+      }))
+    };
+  }
+
+  function clearAllTracksHard(){
+    tracks.forEach(t=>{
+      t.audioEl.pause();
+      try{ t.sourceNode.disconnect(); t.gainNode.disconnect(); t.pannerNode.disconnect(); t.analyser.disconnect(); }catch(e){}
+      removeDot(t);
+      if(t._ui && t._ui.card) t._ui.card.remove();
+      if(t._timelineRow) t._timelineRow.remove();
+    });
+    tracks = [];
+    nodeRegistry.clear();
+    updateEmptyStates();
+    refreshTimelineVisuals();
+  }
+
+  let autosaveTimer = null;
+  function scheduleAutosave(){
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(()=>{
+      if(tracks.length === 0) return;
+      dbPut('autosave', buildProjectData()).catch(()=>{});
+    }, 1500);
+  }
+
+  async function restoreProjectData(rec){
+    recordHistory();
+    clearAllTracksHard();
+    for(const t of rec.tracks){
+      const f = new File([t.blob], t.name, {type: t.type || 'audio/wav'});
+      addTrackFromFile(f, t);
+    }
+  }
+
+  // Autosave-restore banner on load
+  (async ()=>{
+    try{
+      const rec = await dbGet('autosave');
+      if(rec && rec.tracks && rec.tracks.length){
+        const when = new Date(rec.savedAt).toLocaleString();
+        autosaveBannerText.textContent = `Found an autosaved session from ${when} (${rec.tracks.length} track${rec.tracks.length===1?'':'s'}).`;
+        autosaveBanner.style.display = 'flex';
+      }
+    }catch(e){ /* IndexedDB unavailable — silently skip */ }
+  })();
+  autosaveRestoreBtn.addEventListener('click', async ()=>{
+    try{
+      const rec = await dbGet('autosave');
+      if(rec) await restoreProjectData(rec);
+    }catch(e){ alert('Could not load the autosaved session.'); }
+    autosaveBanner.style.display = 'none';
+  });
+  autosaveDismissBtn.addEventListener('click', ()=>{ autosaveBanner.style.display = 'none'; });
+
+  // Save button
+  saveProjectBtn.addEventListener('click', async ()=>{
+    if(tracks.length === 0){ alert('Add some tracks first.'); return; }
+    const defaultName = `Project — ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`;
+    const name = prompt('Name this saved project:', defaultName);
+    if(name === null) return;
+    const key = 'proj_' + Date.now();
+    const data = buildProjectData();
+    data.name = name || defaultName;
+    saveProjectBtn.disabled = true;
+    const original = saveProjectBtn.textContent;
+    saveProjectBtn.textContent = 'Saving…';
+    try{
+      await dbPut(key, data);
+    }catch(e){
+      alert('Could not save — your browser storage may be full or unavailable.');
+    }finally{
+      saveProjectBtn.disabled = false;
+      saveProjectBtn.textContent = original;
+    }
+  });
+
+  // Load modal
+  async function renderProjectList(){
+    let all;
+    try{ all = await dbGetAll(); }
+    catch(e){ projectListWrap.innerHTML = '<div class="project-empty">Saved projects aren\'t available in this browser (private/incognito mode often blocks them).</div>'; return; }
+    const named = all.filter(p=>p.key !== 'autosave');
+    const autosave = all.find(p=>p.key === 'autosave');
+    let html = '';
+    if(autosave){
+      html += projectRowHtml(autosave, 'Autosave — most recent session');
+    }
+    named.sort((a,b)=>b.savedAt-a.savedAt).forEach(p=> html += projectRowHtml(p, p.name));
+    projectListWrap.innerHTML = html || '<div class="project-empty">No saved projects yet.</div>';
+
+    projectListWrap.querySelectorAll('.restore-proj-btn').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        try{
+          const rec = await dbGet(btn.dataset.key);
+          if(rec){ await restoreProjectData(rec); loadOverlay.style.display = 'none'; }
+        }catch(e){ alert('Could not load this project.'); }
+      });
+    });
+    projectListWrap.querySelectorAll('.delete-proj-btn').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        if(!confirm('Delete this saved project?')) return;
+        try{ await dbDelete(btn.dataset.key); }catch(e){}
+        renderProjectList();
+      });
+    });
+  }
+  function projectRowHtml(p, label){
+    const when = new Date(p.savedAt).toLocaleString();
+    const n = (p.tracks||[]).length;
+    return `<div class="project-row">
+      <div class="meta">
+        <div class="pname">${escapeHtml(label)}</div>
+        <div class="pdate">${when} · ${n} track${n===1?'':'s'}</div>
+      </div>
+      <button class="add-btn restore-proj-btn" data-key="${p.key}">Restore</button>
+      <button class="icon-btn danger delete-proj-btn" data-key="${p.key}" title="Delete">✕</button>
+    </div>`;
+  }
+  loadProjectBtn.addEventListener('click', ()=>{ renderProjectList(); loadOverlay.style.display = 'flex'; });
+  loadCloseBtn.addEventListener('click', ()=>{ loadOverlay.style.display = 'none'; });
+  loadOverlay.addEventListener('click', e=>{ if(e.target===loadOverlay) loadOverlay.style.display = 'none'; });
+
+  // ---------- AI Editor ----------
+  function aiLogMsg(msg){ aiLog.textContent += msg + "\n"; aiLog.scrollTop = aiLog.scrollHeight; }
+  function populateAiSplitSelect(){
+    aiSplitSelect.innerHTML = tracks.length
+      ? tracks.map(t=>`<option value="${t.id}">${escapeHtml(trimName(t.name))} (${fmtTime(t.audioEl.duration||0)})</option>`).join('')
+      : '<option disabled>No tracks yet — add audio first</option>';
+  }
+  aiOpenBtn.addEventListener('click', ()=>{
+    populateAiSplitSelect();
+    aiLog.textContent = '';
+    aiOverlay.style.display = 'flex';
+  });
+  aiCloseBtn.addEventListener('click', ()=>{ aiOverlay.style.display = 'none'; });
+  aiOverlay.addEventListener('click', e=>{ if(e.target===aiOverlay) aiOverlay.style.display = 'none'; });
+
+  function avgChannels(buffer){
+    if(buffer.numberOfChannels === 1) return buffer.getChannelData(0);
+    const len = buffer.length;
+    const out = new Float32Array(len);
+    for(let ch=0; ch<buffer.numberOfChannels; ch++){
+      const data = buffer.getChannelData(ch);
+      for(let i=0;i<len;i++) out[i] += data[i]/buffer.numberOfChannels;
+    }
+    return out;
+  }
+
+  async function aiSplitTrack(trackId){
+    const track = tracks.find(t=>t.id === Number(trackId));
+    if(!track) return;
+    aiLogMsg(`Analyzing "${track.name}"…`);
+    let buffer;
+    try{
+      const arrBuf = await track.file.arrayBuffer();
+      buffer = await getAudioCtx().decodeAudioData(arrBuf);
+    }catch(e){
+      aiLogMsg(`Couldn't decode this file for analysis.`);
+      return;
+    }
+    const data = avgChannels(buffer);
+    const sr = buffer.sampleRate;
+    const winSize = Math.max(1, Math.floor(sr*0.05)); // 50ms windows
+    const silenceThresh = 0.02;
+    const minSilenceWindows = Math.ceil(0.35/0.05); // ~350ms of quiet counts as a gap
+    const windows = [];
+    for(let i=0;i<data.length;i+=winSize){
+      let sum=0, n=0;
+      for(let j=i;j<Math.min(data.length,i+winSize);j++){ sum += data[j]*data[j]; n++; }
+      windows.push(n ? Math.sqrt(sum/n) : 0);
+    }
+    let segments = [];
+    let segStart = 0, silenceRun = 0;
+    for(let w=0; w<windows.length; w++){
+      if(windows[w] < silenceThresh){
+        silenceRun++;
+      } else {
+        if(silenceRun >= minSilenceWindows){
+          const segEnd = (w - silenceRun) * winSize;
+          if(segEnd - segStart > sr*0.4) segments.push([segStart, segEnd]);
+          segStart = w * winSize;
+        }
+        silenceRun = 0;
+      }
+    }
+    if(data.length - segStart > sr*0.4) segments.push([segStart, data.length]);
+    if(segments.length <= 1){
+      aiLogMsg(`No clear silence gaps found in "${track.name}" — left it as one track.`);
+      return;
+    }
+    aiLogMsg(`Found ${segments.length} segments. Splitting…`);
+    recordHistory();
+    suspendHistory = true;
+    try{
+      const newFiles = segments.map(([startSample, endSample], i)=>{
+        const segBuffer = getAudioCtx().createBuffer(buffer.numberOfChannels, endSample-startSample, sr);
+        for(let ch=0; ch<buffer.numberOfChannels; ch++){
+          segBuffer.copyToChannel(buffer.getChannelData(ch).subarray(startSample, endSample), ch);
+        }
+        const wavBlob = audioBufferToWav(segBuffer);
+        return new File([wavBlob], `${trimName(track.name)} — part ${i+1}.wav`, {type:'audio/wav'});
+      });
+      removeTrackById(track.id);
+      newFiles.forEach(f => addTrackFromFile(f));
+    } finally {
+      suspendHistory = false;
+    }
+    aiLogMsg(`Done — replaced with ${segments.length} new tracks.`);
+    populateAiSplitSelect();
+    scheduleAutosave();
+  }
+  aiSplitBtn.addEventListener('click', ()=>{
+    const id = aiSplitSelect.value;
+    if(!id) return;
+    aiSplitBtn.disabled = true;
+    aiSplitTrack(id).finally(()=> aiSplitBtn.disabled = false);
+  });
+
+  function aiArrangeAll(){
+    if(tracks.length === 0){ aiLogMsg('No tracks to arrange yet.'); return; }
+    recordHistory();
+    aiLogMsg(`Arranging ${tracks.length} track${tracks.length===1?'':'s'} into orbit…`);
+    const n = tracks.length;
+    tracks.forEach((track, i)=>{
+      const angle = (i/n) * Math.PI*2;
+      const radius = 1.8 + (i % 3) * 0.9;
+      track.mode = 'orbit';
+      track.radius = radius;
+      track.angle = angle;
+      track.x = radius*Math.sin(angle);
+      track.z = -radius*Math.cos(angle);
+      track.orbitPhaseAngle = angle;
+      track.orbitPhaseTime = currentPlaybackTime();
+      track.rotateSpeed = 0.35 + (i % 4) * 0.22;
+      track.rotateDir = (i % 2 === 0) ? 1 : -1;
+      setPannerPosition(track);
+      positionDot(track);
+      if(track._ui && track._ui.card){
+        const card = track._ui.card;
+        applyModeUI(track, card.querySelectorAll('.mode-btn'), card.querySelector('.orbit-controls'), card.querySelector('.keyframe-controls'), card.querySelector('.dir-btn'));
+        const speedSlider = card.querySelector('.speed-slider');
+        const speedVal = card.querySelector('.speed-val');
+        if(speedSlider){ speedSlider.value = track.rotateSpeed; speedVal.textContent = track.rotateSpeed.toFixed(1)+'x'; }
+      }
+    });
+    refreshTimelineVisuals();
+    aiLogMsg(`Done — every track is now orbiting at its own speed and direction.`);
+    scheduleAutosave();
+  }
+  aiArrangeBtn.addEventListener('click', aiArrangeAll);
 
   // ---------- Export (offline render to WAV) ----------
   function scheduleAutomation(track, panner, dur){
@@ -1153,6 +1971,15 @@
       if(kfs[0].time > 0) setPos(kfs[0].time, kfs[0].x, kfs[0].y, kfs[0].z, false);
       for(let i=1;i<kfs.length;i++) setPos(kfs[i].time, kfs[i].x, kfs[i].y, kfs[i].z, false);
     }
+  }
+
+  function scheduleVolumeAutomation(track, gainNode, dur){
+    if(track.muted){ gainNode.gain.setValueAtTime(0, 0); return; }
+    const pts = track.volumeAutomation;
+    if(!pts || pts.length === 0){ gainNode.gain.setValueAtTime(track.volume, 0); return; }
+    gainNode.gain.setValueAtTime(pts[0].value, 0);
+    pts.forEach(p=>{ gainNode.gain.linearRampToValueAtTime(p.value, Math.max(0.0001, p.time)); });
+    if(pts[pts.length-1].time < dur) gainNode.gain.setValueAtTime(pts[pts.length-1].value, dur);
   }
 
   function audioBufferToWav(buffer){
@@ -1199,50 +2026,221 @@
     for(let i=0;i<str.length;i++) view.setUint8(offset+i, str.charCodeAt(i));
   }
 
-  exportBtn.addEventListener('click', async ()=>{
+  exportOpenBtn.addEventListener('click', ()=>{
+    if(tracks.length === 0){ alert('Add some tracks first.'); return; }
+    if(!exportNameInput.value) exportNameInput.value = defaultExportName();
+    updateFormatHint();
+    exportLog.style.display = 'none';
+    exportLog.textContent = '';
+    exportOverlay.style.display = 'flex';
+  });
+  exportCloseBtn.addEventListener('click', ()=>{ exportOverlay.style.display = 'none'; });
+  exportOverlay.addEventListener('click', e=>{ if(e.target===exportOverlay) exportOverlay.style.display = 'none'; });
+
+  function defaultExportName(){
+    return tracks.length === 1 ? trimName(tracks[0].name) : 'Orbit Mix';
+  }
+  function sanitizeFilename(name){
+    return (name||'').trim().replace(/[\\/:*?"<>|]+/g,'').slice(0,120) || 'Orbit Mix';
+  }
+  function downloadBlob(blob, filename){
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 4000);
+  }
+
+  // ---------- Cover art ----------
+  let coverFile = null;
+  let coverObjectUrl = null;
+  coverChooseBtn.addEventListener('click', ()=> coverInput.click());
+  coverInput.addEventListener('change', ()=>{
+    const f = coverInput.files[0];
+    if(!f) return;
+    coverFile = f;
+    if(coverObjectUrl) URL.revokeObjectURL(coverObjectUrl);
+    coverObjectUrl = URL.createObjectURL(f);
+    coverPreview.style.backgroundImage = `url(${coverObjectUrl})`;
+    coverPreview.textContent = '';
+    coverClearBtn.style.display = 'inline-block';
+  });
+  coverClearBtn.addEventListener('click', ()=>{
+    coverFile = null;
+    if(coverObjectUrl){ URL.revokeObjectURL(coverObjectUrl); coverObjectUrl = null; }
+    coverPreview.style.backgroundImage = '';
+    coverPreview.textContent = 'No cover';
+    coverClearBtn.style.display = 'none';
+    coverInput.value = '';
+  });
+
+  // ---------- Format selection ----------
+  let exportFormat = 'm4a';
+  let m4aMimeType = undefined; // undefined = not checked yet, null = checked & unsupported
+  function checkM4ASupport(){
+    if(m4aMimeType !== undefined) return m4aMimeType;
+    m4aMimeType = null;
+    if(window.MediaRecorder && MediaRecorder.isTypeSupported){
+      const candidates = ['audio/mp4;codecs=mp4a.40.2', 'audio/mp4'];
+      for(const c of candidates){ if(MediaRecorder.isTypeSupported(c)){ m4aMimeType = c; break; } }
+    }
+    return m4aMimeType;
+  }
+  document.querySelectorAll('.format-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      exportFormat = btn.dataset.format;
+      document.querySelectorAll('.format-btn').forEach(b=>b.classList.toggle('active', b===btn));
+      updateFormatHint();
+    });
+  });
+  function updateFormatHint(){
+    if(exportFormat === 'm4a'){
+      formatHint.textContent = checkM4ASupport()
+        ? "Encoded natively as AAC — ready for Spotify's (or any distributor's) upload tools."
+        : "This browser can't encode AAC directly — we'll export a WAV instead. Every distributor accepts WAV, or convert to M4A afterward with QuickTime/iTunes or ffmpeg.";
+    } else {
+      formatHint.textContent = 'Uncompressed, sample-accurate, and universally supported — larger file size.';
+    }
+  }
+
+  // ---------- Render: offline (WAV, instant, sample-accurate) ----------
+  async function renderOffline(dur, warnings){
+    const sampleRate = 44100;
+    const offlineCtx = new OfflineAudioContext(2, Math.ceil((dur+0.5)*sampleRate), sampleRate);
+    let ok = 0;
+    for(const track of tracks){
+      let audioBuffer;
+      try{
+        const arrBuf = await track.file.arrayBuffer();
+        audioBuffer = await offlineCtx.decodeAudioData(arrBuf);
+      }catch(e){
+        if(warnings) warnings.push(`Skipped "${track.name}" — this browser couldn't decode it.`);
+        continue;
+      }
+      const src = offlineCtx.createBufferSource();
+      src.buffer = audioBuffer;
+      const gain = offlineCtx.createGain();
+      scheduleVolumeAutomation(track, gain, dur);
+      const panner = offlineCtx.createPanner();
+      configurePanner(panner);
+      src.connect(gain); gain.connect(panner); panner.connect(offlineCtx.destination);
+      scheduleAutomation(track, panner, dur);
+      src.start(0);
+      ok++;
+    }
+    if(ok === 0) throw new Error('No tracks could be decoded for export.');
+    const rendered = await offlineCtx.startRendering();
+    return audioBufferToWav(rendered);
+  }
+
+  // ---------- Render: realtime (M4A/AAC via MediaRecorder — takes as long as the mix) ----------
+  async function renderRealtime(dur, mimeType, onProgress, warnings){
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if(ctx.state === 'suspended') await ctx.resume();
+    const dest = ctx.createMediaStreamDestination();
+    const sources = [];
+    for(const track of tracks){
+      let audioBuffer;
+      try{
+        const arrBuf = await track.file.arrayBuffer();
+        audioBuffer = await ctx.decodeAudioData(arrBuf);
+      }catch(e){
+        if(warnings) warnings.push(`Skipped "${track.name}" — this browser couldn't decode it.`);
+        continue;
+      }
+      const src = ctx.createBufferSource();
+      src.buffer = audioBuffer;
+      const gain = ctx.createGain();
+      scheduleVolumeAutomation(track, gain, dur);
+      const panner = ctx.createPanner();
+      configurePanner(panner);
+      src.connect(gain); gain.connect(panner); panner.connect(dest);
+      scheduleAutomation(track, panner, dur);
+      sources.push(src);
+    }
+    if(sources.length === 0){ try{ ctx.close(); }catch(e){} throw new Error('No tracks could be decoded for export.'); }
+
+    const recorder = new MediaRecorder(dest.stream, {mimeType});
+    const chunks = [];
+    recorder.ondataavailable = e=>{ if(e.data && e.data.size) chunks.push(e.data); };
+    const stopped = new Promise(resolve=>{ recorder.onstop = resolve; });
+    recorder.start();
+    const startTs = performance.now();
+    sources.forEach(s=>s.start(0));
+    await new Promise(resolve=>{
+      function tick(){
+        const elapsed = (performance.now()-startTs)/1000;
+        if(onProgress) onProgress(Math.min(elapsed, dur));
+        if(elapsed >= dur + 0.25){ resolve(); return; }
+        requestAnimationFrame(tick);
+      }
+      tick();
+    });
+    recorder.stop();
+    await stopped;
+    try{ ctx.close(); }catch(e){}
+    return new Blob(chunks, {type: mimeType});
+  }
+
+  exportRunBtn.addEventListener('click', async ()=>{
     if(tracks.length === 0) return;
     const dur = longestDuration();
     if(!dur || dur <= 0) return;
-    exportBtn.disabled = true;
-    const originalLabel = exportBtn.textContent;
-    exportBtn.textContent = "Rendering…";
-    exportStatus.textContent = "decoding audio…";
+
+    const name = sanitizeFilename(exportNameInput.value || defaultExportName());
+    exportRunBtn.disabled = true;
+    const originalLabel = exportRunBtn.textContent;
+    exportLog.style.display = 'block';
+    exportLog.textContent = '';
+    const log = (m)=>{ exportLog.textContent += m + "\n"; exportLog.scrollTop = exportLog.scrollHeight; };
+    const warnings = [];
+
     try{
-      const sampleRate = 44100;
-      const offlineCtx = new OfflineAudioContext(2, Math.ceil((dur+0.5)*sampleRate), sampleRate);
-      for(const track of tracks){
-        const arrBuf = await track.file.arrayBuffer();
-        const audioBuffer = await offlineCtx.decodeAudioData(arrBuf);
-        const src = offlineCtx.createBufferSource();
-        src.buffer = audioBuffer;
-        const gain = offlineCtx.createGain();
-        gain.gain.value = track.muted ? 0 : track.volume;
-        const panner = offlineCtx.createPanner();
-        configurePanner(panner);
-        src.connect(gain); gain.connect(panner); panner.connect(offlineCtx.destination);
-        scheduleAutomation(track, panner, dur);
-        src.start(0);
+      let blob, ext;
+      const wantM4A = exportFormat === 'm4a';
+      const m4aMime = wantM4A ? checkM4ASupport() : null;
+
+      if(wantM4A && m4aMime){
+        log('Encoding AAC in real time — this takes as long as the mix itself…');
+        blob = await renderRealtime(dur, m4aMime, (elapsed)=>{
+          exportRunBtn.textContent = `Rendering… ${fmtTime(elapsed)} / ${fmtTime(dur)}`;
+        }, warnings);
+        ext = 'm4a';
+        log('Done encoding.');
+      } else {
+        if(wantM4A && !m4aMime) log("This browser can't encode AAC directly — exporting WAV instead.");
+        exportRunBtn.textContent = 'Rendering…';
+        log('Rendering offline mix…');
+        blob = await renderOffline(dur, warnings);
+        ext = 'wav';
+        log('Done rendering.');
       }
-      exportStatus.textContent = "rendering mix…";
-      const rendered = await offlineCtx.startRendering();
-      const wavBlob = audioBufferToWav(rendered);
-      const url = URL.createObjectURL(wavBlob);
-      const a = document.createElement('a');
-      a.href = url; a.download = "orbit-mix.wav";
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(()=>URL.revokeObjectURL(url), 4000);
-      exportStatus.textContent = "done ✓";
+
+      warnings.forEach(w=> log('⚠ ' + w));
+      downloadBlob(blob, `${name}.${ext}`);
+      log(`Downloaded "${name}.${ext}".`);
+
+      if(coverFile){
+        const coverExt = (coverFile.name.match(/\.\w+$/i) || ['.jpg'])[0].toLowerCase();
+        downloadBlob(coverFile, `${name}${coverExt}`);
+        log(`Downloaded matching cover art "${name}${coverExt}" — distributors (and Spotify for Artists) take artwork as its own upload rather than embedded in the audio file, so attach this alongside it.`);
+      }
     }catch(err){
       console.error(err);
-      exportStatus.textContent = "export failed";
+      log('Export failed: ' + (err && err.message ? err.message : err));
     }finally{
-      exportBtn.disabled = false;
-      exportBtn.textContent = originalLabel;
-      setTimeout(()=>{ exportStatus.textContent = ""; }, 3500);
+      exportRunBtn.disabled = false;
+      exportRunBtn.textContent = originalLabel;
     }
+  });
+
+  aiRenderBtn.addEventListener('click', ()=>{
+    aiOverlay.style.display = 'none';
+    exportOpenBtn.click();
   });
 
 })();
 </script>
+
 </body>
 </html>
