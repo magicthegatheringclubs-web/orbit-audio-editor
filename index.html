@@ -161,6 +161,7 @@
 
   /* ---------- Upload zone ---------- */
   .dropzone{
+    display:block;
     margin-top: 14px; border: 1.5px dashed var(--line); border-radius: 8px; padding: 16px;
     text-align:center; color: var(--text-dim); font-size: 12.5px; cursor:pointer;
     transition: border-color .15s, color .15s, background .15s;
@@ -171,6 +172,7 @@
   /* ---------- Track list ---------- */
   .tracks-panel{ max-height: 460px; overflow-y:auto; }
   .add-btn{
+    display:inline-block;
     background: var(--accent); color: #06201c; border:none; font-family:'Space Grotesk',sans-serif;
     font-weight:600; font-size: 11.5px; letter-spacing: 0.03em; padding: 7px 12px; border-radius: 7px; cursor:pointer;
   }
@@ -210,6 +212,7 @@
   .dir-btn.active{ color: var(--accent); border-color: var(--accent-dim); }
   .speed-slider{ flex:1; }
   .kf-mini-btn{
+    display:inline-block;
     background: var(--panel); border:1px solid var(--line); color: var(--text-dim); border-radius:6px;
     padding: 5px 9px; font-size: 10.5px; cursor:pointer; font-family:'Space Grotesk',sans-serif;
   }
@@ -456,17 +459,17 @@
         </svg>
         <div class="empty-orbit" id="emptyOrbit">No sources yet. Add a track to see it appear here.</div>
       </div>
-      <div class="dropzone" id="dropzone">
+      <label class="dropzone" id="dropzone" for="fileInput">
         Drop audio or video here, or <span class="key">click to browse — camera roll included</span> — each file becomes its own track
-      </div>
-      <input type="file" id="fileInput" class="visually-hidden-file" accept="audio/*,video/*" multiple>
+      </label>
+      <input type="file" id="fileInput" class="visually-hidden-file" multiple>
     </div>
 
     <!-- Track List -->
     <div class="panel tracks-panel">
       <div class="panel-title">
         <h2>Tracks</h2>
-        <button class="add-btn" id="addBtn">+ Add track</button>
+        <label class="add-btn" id="addBtn" for="fileInput">+ Add track</label>
       </div>
       <div id="trackList">
         <div class="empty-state" id="emptyTracks">Upload audio to start building your mix.<br>Static, Orbit, or Path — each track picks its own way of moving through space.</div>
@@ -558,7 +561,7 @@
       <div class="cover-picker">
         <div class="cover-preview" id="coverPreview">No cover</div>
         <div style="display:flex; flex-direction:column; gap:6px;">
-          <button class="kf-mini-btn" id="coverChooseBtn" type="button">Choose image…</button>
+          <label class="kf-mini-btn" id="coverChooseBtn" for="coverInput">Choose image…</label>
           <button class="kf-mini-btn" id="coverClearBtn" type="button" style="display:none;">Remove</button>
         </div>
         <input type="file" id="coverInput" accept="image/*" class="visually-hidden-file">
@@ -1854,34 +1857,53 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
   }
 
   // ---------- File input handling ----------
-  function handleFiles(fileList){
-    // Camera roll clips (iPhone/Android video) carry an audio track we can still use —
-    // the <audio> element and Web Audio API happily decode just the audio out of an
-    // mp4/mov/m4v container, so we accept video files here too, not just pure audio.
-    const audioExt = /\.(mp3|wav|ogg|m4a|aac|flac|caf|aiff|aif|wma|opus|3gp|mp4)$/i;
-    const videoExt = /\.(mov|m4v|3gp|3gpp|webm|avi)$/i;
-    const all = Array.from(fileList);
-    const files = all.filter(f =>
-      f.type.startsWith('audio/') ||
-      f.type.startsWith('video/') ||
-      audioExt.test(f.name) ||
-      videoExt.test(f.name)
-    );
-    if(files.length) recordHistory();
-    files.forEach(f => addTrackFromFile(f));
+  // The file picker no longer restricts by MIME type (see accept attribute) — mobile
+  // pickers often grey out real audio/video files whose reported MIME type doesn't
+  // cleanly match "audio/*"/"video/*", which made picking anything impossible. So now
+  // literally any file can be selected, and we sort out what's usable here instead,
+  // falling back to sniffing the file's actual bytes when name/type both come back blank.
+  const audioExt = /\.(mp3|wav|ogg|m4a|aac|flac|caf|aiff|aif|wma|opus|3gp|mp4|amr)$/i;
+  const videoExt = /\.(mov|m4v|3gp|3gpp|webm|avi|mkv)$/i;
 
-    // iOS sometimes hands back files with an empty/odd MIME type. If nothing made it
-    // through, say so explicitly instead of silently doing nothing — that silence is
-    // what makes it look "broken" rather than just picky about file types.
-    if(all.length > 0 && files.length === 0){
+  async function looksLikeAudioOrVideo(file){
+    if(file.type.startsWith('audio/') || file.type.startsWith('video/')) return true;
+    if(audioExt.test(file.name) || videoExt.test(file.name)) return true;
+    // Last resort: peek at the file's magic bytes. Cloud-synced/renamed files sometimes
+    // arrive with no usable name or MIME type at all, even though the audio is fine.
+    try{
+      const head = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+      const c = i => String.fromCharCode(head[i]);
+      const s4 = c(0)+c(1)+c(2)+c(3);
+      const s8 = c(4)+c(5)+c(6)+c(7);
+      if(s4 === 'RIFF' || s4 === 'fLaC' || s4 === 'OggS' || s4 === 'FORM') return true; // WAV/AVI, FLAC, OGG, AIFF
+      if(s8 === 'ftyp') return true; // MP4/M4A/MOV family
+      if(head[0] === 0x49 && head[1] === 0x44 && head[2] === 0x33) return true; // "ID3"
+      if(head[0] === 0xFF && (head[1] & 0xE0) === 0xE0) return true; // MPEG frame sync (raw MP3)
+    }catch(e){ /* unreadable — treat as not usable below */ }
+    return false;
+  }
+
+  async function handleFiles(fileList){
+    const all = Array.from(fileList);
+    const accepted = [];
+    for(const f of all){
+      if(await looksLikeAudioOrVideo(f)) accepted.push(f);
+    }
+    if(accepted.length) recordHistory();
+    accepted.forEach(f => addTrackFromFile(f));
+
+    const rejectedCount = all.length - accepted.length;
+    if(rejectedCount > 0){
       const original = dropzone.innerHTML;
-      dropzone.textContent = `Couldn't read ${all.length} file(s) as audio — try MP3, WAV, M4A, or a video clip.`;
+      dropzone.textContent = accepted.length
+        ? `Added ${accepted.length}, skipped ${rejectedCount} that didn't look like audio or video.`
+        : `Couldn't recognize ${rejectedCount} file(s) as audio or video — try MP3, WAV, M4A, or a video clip.`;
       setTimeout(()=>{ dropzone.innerHTML = original; }, 4000);
     }
   }
   fileInput.addEventListener('change', e => { handleFiles(e.target.files); fileInput.value = ""; });
-  dropzone.addEventListener('click', ()=> fileInput.click());
-  addBtn.addEventListener('click', ()=> fileInput.click());
+  // dropzone/addBtn are native <label for="fileInput"> elements now — the browser opens
+  // the picker itself on click, no JS trigger needed (and adding one would double-open it).
   ['dragenter','dragover'].forEach(evt=> dropzone.addEventListener(evt, e=>{ e.preventDefault(); dropzone.classList.add('drag'); }));
   ['dragleave','drop'].forEach(evt=> dropzone.addEventListener(evt, e=>{ e.preventDefault(); dropzone.classList.remove('drag'); }));
   dropzone.addEventListener('drop', e=>{ if(e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
@@ -2471,7 +2493,7 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
   // ---------- Cover art ----------
   let coverFile = null;
   let coverObjectUrl = null;
-  coverChooseBtn.addEventListener('click', ()=> coverInput.click());
+  // coverChooseBtn is a native <label for="coverInput"> — no JS click trigger needed.
   coverInput.addEventListener('change', ()=>{
     const f = coverInput.files[0];
     if(!f) return;
