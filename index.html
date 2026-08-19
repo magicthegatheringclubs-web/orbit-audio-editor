@@ -94,6 +94,7 @@
   .brand h1{ font-size: 19px; letter-spacing: 0.14em; margin: 0; font-weight: 700; }
   .brand p{ margin: 2px 0 0; font-size: 11px; color: var(--text-dim); letter-spacing: 0.04em; }
 
+  .controls-row{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
   .header-controls{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
 
   .transport{
@@ -137,7 +138,7 @@
   .export-status{ font-size: 10.5px; color: var(--text-dim); min-width: 90px; }
 
   /* ---------- Main grid ---------- */
-  .grid{ display:grid; grid-template-columns: minmax(0, minmax(340px, 560px)) minmax(0, 1fr); gap: 20px; align-items:start; }
+  .grid{ display:grid; grid-template-columns: minmax(340px, 560px) minmax(0, 1fr); gap: 20px; align-items:start; }
   @media (max-width: 880px){ .grid{ grid-template-columns: minmax(0, 1fr); } }
 
   .panel{
@@ -384,12 +385,15 @@
     .brand .mark{ width: 28px; height: 28px; }
     .brand h1{ font-size: 16px; }
     .brand p{ font-size: 9.5px; }
-    .header-controls{ width: 100%; justify-content: flex-start; }
+    .controls-row{ width: 100%; justify-content: flex-start; }
 
     /* Undo/Redo + Save/Load + AI Editor + Export were wrapping into a stack of separate
        boxes on narrow screens. Condense them into one continuous, horizontally-scrollable
-       glass toolbar instead — a native-feeling pattern (like Photos'/Files' toolbars). */
+       glass toolbar instead — a native-feeling pattern (like Photos'/Files' toolbars).
+       Transport lives outside .header-controls now (see markup) specifically so this
+       overflow+mask combination can never clip the fixed bottom bar in Safari. */
     .header-controls{
+      width: 100%;
       display:flex; flex-wrap:nowrap; align-items:center; gap:5px;
       overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none;
       padding-bottom:2px; margin-bottom: 2px;
@@ -397,8 +401,6 @@
       mask-image: linear-gradient(to right, black calc(100% - 18px), transparent 100%);
     }
     .header-controls::-webkit-scrollbar{ display:none; }
-    /* .transport already leaves flow via position:fixed below (bottom-docked bar), so it
-       takes no horizontal space here even though it stays in the DOM. */
     .history-group, .export-group{
       flex:0 0 auto; padding: 6px 7px; gap:5px; border-radius: 14px;
     }
@@ -460,26 +462,28 @@
         <p>3D SPATIAL &amp; 8D AUDIO EDITOR</p>
       </div>
     </div>
-    <div class="header-controls">
+    <div class="controls-row">
       <div class="transport">
         <button class="tbtn primary" id="playBtn" title="Play / Pause">▶</button>
         <button class="tbtn" id="stopBtn" title="Stop">■</button>
         <span class="time mono" id="timeDisplay">00:00 / 00:00</span>
         <input type="range" class="seek" id="seekBar" min="0" max="1000" value="0">
       </div>
-      <div class="history-group">
-        <button class="tbtn" id="undoBtn" title="Undo">↶</button>
-        <button class="tbtn" id="redoBtn" title="Redo">↷</button>
-      </div>
-      <div class="export-group">
-        <button class="export-btn" id="saveProjectBtn" title="Save your progress in this browser">💾 Save</button>
-        <button class="export-btn" id="loadProjectBtn" title="Restore a saved project">📂 Load</button>
-      </div>
-      <div class="export-group">
-        <button class="export-btn" id="aiOpenBtn" title="Automated split &amp; arrange tools">✨ AI Editor</button>
-      </div>
-      <div class="export-group">
-        <button class="export-btn" id="exportOpenBtn">⭳ Export</button>
+      <div class="header-controls">
+        <div class="history-group">
+          <button class="tbtn" id="undoBtn" title="Undo">↶</button>
+          <button class="tbtn" id="redoBtn" title="Redo">↷</button>
+        </div>
+        <div class="export-group">
+          <button class="export-btn" id="saveProjectBtn" title="Save your progress in this browser">💾 Save</button>
+          <button class="export-btn" id="loadProjectBtn" title="Restore a saved project">📂 Load</button>
+        </div>
+        <div class="export-group">
+          <button class="export-btn" id="aiOpenBtn" title="Automated split &amp; arrange tools">✨ AI Editor</button>
+        </div>
+        <div class="export-group">
+          <button class="export-btn" id="exportOpenBtn">⭳ Export</button>
+        </div>
       </div>
     </div>
   </header>
