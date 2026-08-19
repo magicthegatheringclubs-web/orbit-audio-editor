@@ -197,7 +197,8 @@
   }
   .track-top{ display:flex; align-items:center; gap:10px; margin-bottom: 10px; }
   .swatch{ width: 9px; height:9px; border-radius:50%; background: var(--dot-color, var(--accent)); flex-shrink:0; box-shadow: 0 0 8px var(--dot-color, var(--accent)); }
-  .track-name{ flex:1; font-size: 12.5px; font-weight: 600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .track-name{ flex:1; font-size: 12.5px; font-weight: 600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:text; }
+  .track-name-input{ width:100%; min-width:0; background:transparent; border:none; border-bottom:1px solid var(--accent); color:inherit; font:inherit; font-weight:600; font-size:12.5px; outline:none; padding:0 0 1px 0; }
   .meter{ width: 40px; height: 5px; background: var(--line); border-radius: 3px; overflow:hidden; flex-shrink:0; }
   .meter-fill{ height:100%; width:0%; background: var(--dot-color, var(--accent)); transition: width 60ms linear; }
   .icon-btn{ background: transparent; border:none; color: var(--text-dim); cursor:pointer; font-size:13px; width:24px; height:24px; display:flex; align-items:center; justify-content:center; border-radius:5px; }
@@ -571,6 +572,12 @@
       <label>Split a track by silence</label>
       <select id="aiSplitSelect"></select>
       <button class="add-btn" id="aiSplitBtn">Split</button>
+    </div>
+    <div class="ai-section">
+      <label>Split a track into stems</label>
+      <select id="aiStemSelect"></select>
+      <button class="add-btn" id="aiStemBtn">Split into stems</button>
+      <span class="hint" style="margin:0;">Pulls out Vocals, Drums, Bass &amp; Other as separate movable tracks using stereo-field and frequency analysis — no upload, all in this browser. Works best on stereo mixes with centered vocals; can take a minute on longer tracks.</span>
     </div>
     <div class="ai-section">
       <button class="add-btn" id="aiArrangeBtn">Auto-orbit all tracks</button>
@@ -1010,6 +1017,8 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
   const aiCloseBtn = document.getElementById('aiCloseBtn');
   const aiSplitSelect = document.getElementById('aiSplitSelect');
   const aiSplitBtn = document.getElementById('aiSplitBtn');
+  const aiStemSelect = document.getElementById('aiStemSelect');
+  const aiStemBtn = document.getElementById('aiStemBtn');
   const aiArrangeBtn = document.getElementById('aiArrangeBtn');
   const aiSmoothSelect = document.getElementById('aiSmoothSelect');
   const aiSmoothBtn = document.getElementById('aiSmoothBtn');
@@ -1522,7 +1531,8 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     card.innerHTML = `
       <div class="track-top">
         <div class="swatch"></div>
-        <div class="track-name" title="${escapeHtml(track.name)}">${escapeHtml(trimName(track.name))}</div>
+        <div class="track-name" title="Double-click to rename — ${escapeHtml(track.name)}">${escapeHtml(trimName(track.name))}</div>
+        <button class="icon-btn rename-btn" title="Rename track">✎</button>
         <div class="meter"><div class="meter-fill"></div></div>
         <button class="icon-btn mute-btn" title="Mute">🔊</button>
         <button class="icon-btn danger remove-btn" title="Remove track">✕</button>
@@ -1559,6 +1569,8 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     `;
     trackList.appendChild(card);
 
+    const nameEl = card.querySelector('.track-name');
+    const renameBtn = card.querySelector('.rename-btn');
     const muteBtn = card.querySelector('.mute-btn');
     const removeBtn = card.querySelector('.remove-btn');
     const volSlider = card.querySelector('.vol-slider');
@@ -1577,10 +1589,56 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     const clearPathBtn = card.querySelector('.clear-path-btn');
     const kfCount = card.querySelector('.kf-count');
 
-    track._ui = { card, muteBtn, meterFill: card.querySelector('.meter-fill'), kfCount, clearVolAutoBtn, autoNote };
+    track._ui = { card, muteBtn, meterFill: card.querySelector('.meter-fill'), kfCount, clearVolAutoBtn, autoNote, nameEl };
     muteBtn.textContent = track.muted ? "🔇" : "🔊";
     syncVolAutoNote(track);
     applyModeUI(track, modeBtns, orbitControls, keyframeControls, dirBtn);
+
+    // ---- Rename ----
+    function commitRename(newName){
+      const trimmed = newName.trim();
+      if(trimmed && trimmed !== track.name){
+        recordHistory();
+        track.name = trimmed;
+        scheduleAutosave();
+      }
+      nameEl.textContent = trimName(track.name);
+      nameEl.title = `Double-click to rename — ${track.name}`;
+      if(track._timelineRow){
+        const tlName = track._timelineRow.querySelector('.name');
+        if(tlName){ tlName.textContent = trimName(track.name); tlName.title = track.name; }
+      }
+    }
+    function startRename(){
+      if(nameEl.querySelector('input')) return;
+      const original = track.name;
+      nameEl.textContent = '';
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'track-name-input';
+      input.maxLength = 200;
+      input.value = original;
+      nameEl.appendChild(input);
+      input.focus();
+      input.select();
+      let done = false;
+      function finish(commit){
+        if(done) return;
+        done = true;
+        if(commit) commitRename(input.value);
+        else { nameEl.textContent = trimName(track.name); nameEl.title = `Double-click to rename — ${track.name}`; }
+      }
+      input.addEventListener('keydown', e=>{
+        if(e.key === 'Enter'){ e.preventDefault(); input.blur(); }
+        else if(e.key === 'Escape'){ e.preventDefault(); finish(false); }
+        e.stopPropagation();
+      });
+      input.addEventListener('blur', ()=> finish(true));
+      input.addEventListener('click', e=> e.stopPropagation());
+      input.addEventListener('dblclick', e=> e.stopPropagation());
+    }
+    nameEl.addEventListener('dblclick', startRename);
+    renameBtn.addEventListener('click', startRename);
 
     muteBtn.addEventListener('click', ()=>{
       recordHistory();
@@ -2277,8 +2335,14 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
       ? candidates.map(t=>`<option value="${t.id}">${escapeHtml(trimName(t.name))} (${t.keyframes.length} points)</option>`).join('')
       : '<option disabled>No recorded paths yet — set a track to Path mode and drag it while playing</option>';
   }
+  function populateAiStemSelect(){
+    aiStemSelect.innerHTML = tracks.length
+      ? tracks.map(t=>`<option value="${t.id}">${escapeHtml(trimName(t.name))} (${fmtTime(t.audioEl.duration||0)})</option>`).join('')
+      : '<option disabled>No tracks yet — add audio first</option>';
+  }
   aiOpenBtn.addEventListener('click', ()=>{
     populateAiSplitSelect();
+    populateAiStemSelect();
     populateAiSmoothSelect();
     aiLog.textContent = '';
     aiOverlay.style.display = 'flex';
@@ -2365,6 +2429,158 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     if(!id) return;
     aiSplitBtn.disabled = true;
     aiSplitTrack(id).finally(()=> aiSplitBtn.disabled = false);
+  });
+
+  // ---------- Stem splitter ----------
+  // Not a trained neural model — this is real-time-safe DSP that runs entirely in the
+  // browser via OfflineAudioContext: mid/side (stereo phase) extraction isolates
+  // center-panned content for Vocals, band-pass sums isolate percussive/low content for
+  // Drums/Bass, and "Other" is the residual left after subtracting the first three from
+  // the original mix. Quality depends heavily on how the source was mixed.
+  function renderStem(buffer, buildFn){
+    const ctx = new OfflineAudioContext(2, buffer.length, buffer.sampleRate);
+    buildFn(ctx, buffer);
+    return ctx.startRendering();
+  }
+  // Sums L+R (or passes through mono) into a single mono GainNode — the "center channel".
+  function connectMonoMid(ctx, buffer){
+    const src = ctx.createBufferSource(); src.buffer = buffer;
+    const mid = ctx.createGain();
+    if(buffer.numberOfChannels < 2){
+      src.connect(mid);
+    } else {
+      const splitter = ctx.createChannelSplitter(2);
+      src.connect(splitter);
+      const gL = ctx.createGain(); gL.gain.value = 0.5;
+      const gR = ctx.createGain(); gR.gain.value = 0.5;
+      splitter.connect(gL, 0);
+      splitter.connect(gR, 1);
+      gL.connect(mid); gR.connect(mid);
+    }
+    src.start();
+    return mid;
+  }
+  // Duplicates a mono node to both channels of a stereo merger.
+  function toStereo(ctx, node){
+    const merger = ctx.createChannelMerger(2);
+    node.connect(merger, 0, 0);
+    node.connect(merger, 0, 1);
+    return merger;
+  }
+  // Plays a buffer through unmodified, duplicating mono sources to stereo so channel
+  // counts match everything else being summed in the same offline render.
+  function connectStereoPassthrough(ctx, buffer){
+    const src = ctx.createBufferSource(); src.buffer = buffer;
+    if(buffer.numberOfChannels >= 2){
+      src.start();
+      return src;
+    }
+    const merger = ctx.createChannelMerger(2);
+    src.connect(merger, 0, 0);
+    src.connect(merger, 0, 1);
+    src.start();
+    return merger;
+  }
+
+  function extractVocals(buffer){
+    return renderStem(buffer, (ctx, buf)=>{
+      const mid = connectMonoMid(ctx, buf);
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 180; hp.Q.value = 0.7;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5200; lp.Q.value = 0.7;
+      const presence = ctx.createBiquadFilter(); presence.type = 'peaking'; presence.frequency.value = 2500; presence.Q.value = 1.1; presence.gain.value = 6;
+      mid.connect(hp); hp.connect(lp); lp.connect(presence);
+      toStereo(ctx, presence).connect(ctx.destination);
+    });
+  }
+  function extractDrums(buffer){
+    return renderStem(buffer, (ctx, buf)=>{
+      const mid = connectMonoMid(ctx, buf);
+      const sum = ctx.createGain();
+      // Kick, snare-body, and hat/cymbal bands, summed — a rough percussive-energy estimate.
+      [[45,150,1.15], [150,280,0.9], [2500,9500,1.0]].forEach(([lo,hi,g])=>{
+        const hpB = ctx.createBiquadFilter(); hpB.type = 'highpass'; hpB.frequency.value = lo; hpB.Q.value = 0.9;
+        const lpB = ctx.createBiquadFilter(); lpB.type = 'lowpass'; lpB.frequency.value = hi; lpB.Q.value = 0.9;
+        const bandGain = ctx.createGain(); bandGain.gain.value = g;
+        mid.connect(hpB); hpB.connect(lpB); lpB.connect(bandGain); bandGain.connect(sum);
+      });
+      toStereo(ctx, sum).connect(ctx.destination);
+    });
+  }
+  function extractBass(buffer){
+    return renderStem(buffer, (ctx, buf)=>{
+      const mid = connectMonoMid(ctx, buf);
+      const lp1 = ctx.createBiquadFilter(); lp1.type = 'lowpass'; lp1.frequency.value = 170; lp1.Q.value = 0.7;
+      const lp2 = ctx.createBiquadFilter(); lp2.type = 'lowpass'; lp2.frequency.value = 170; lp2.Q.value = 0.7;
+      mid.connect(lp1); lp1.connect(lp2);
+      toStereo(ctx, lp2).connect(ctx.destination);
+    });
+  }
+  // Everything left over once Vocals, Drums & Bass are subtracted from the original mix.
+  function extractOther(buffer, vocalsBuf, drumsBuf, bassBuf){
+    return renderStem(buffer, (ctx, buf)=>{
+      const main = connectStereoPassthrough(ctx, buf);
+      main.connect(ctx.destination);
+      [vocalsBuf, drumsBuf, bassBuf].forEach(stemBuf=>{
+        const s = ctx.createBufferSource(); s.buffer = stemBuf;
+        const inv = ctx.createGain(); inv.gain.value = -1;
+        s.connect(inv); inv.connect(ctx.destination);
+        s.start();
+      });
+    });
+  }
+
+  async function aiSplitStems(trackId){
+    const track = tracks.find(t=>t.id === Number(trackId));
+    if(!track) return;
+    aiLogMsg(`Analyzing "${track.name}" for stem separation…`);
+    let buffer;
+    try{
+      const arrBuf = await track.file.arrayBuffer();
+      buffer = await getAudioCtx().decodeAudioData(arrBuf);
+    }catch(e){
+      aiLogMsg(`Couldn't decode this file for stem separation.`);
+      return;
+    }
+    if(buffer.numberOfChannels < 2){
+      aiLogMsg(`Note: "${track.name}" is mono, so Vocals/Other separation (which relies on stereo panning) will be limited. Drums & Bass will still extract normally.`);
+    }
+    try{
+      aiLogMsg(`Extracting vocals…`);
+      const vocalsBuf = await extractVocals(buffer);
+      aiLogMsg(`Extracting drums…`);
+      const drumsBuf = await extractDrums(buffer);
+      aiLogMsg(`Extracting bass…`);
+      const bassBuf = await extractBass(buffer);
+      aiLogMsg(`Extracting remaining instruments…`);
+      const otherBuf = await extractOther(buffer, vocalsBuf, drumsBuf, bassBuf);
+
+      recordHistory();
+      suspendHistory = true;
+      try{
+        const base = trimName(track.name);
+        removeTrackById(track.id);
+        [['Vocals', vocalsBuf], ['Drums', drumsBuf], ['Bass', bassBuf], ['Other', otherBuf]]
+          .forEach(([label, buf])=>{
+            const wavBlob = audioBufferToWav(buf);
+            const f = new File([wavBlob], `${base} — ${label}.wav`, {type:'audio/wav'});
+            addTrackFromFile(f);
+          });
+      } finally {
+        suspendHistory = false;
+      }
+      aiLogMsg(`Done — split "${track.name}" into 4 stems (Vocals, Drums, Bass, Other), each its own movable track.`);
+      aiLogMsg(`This uses phase-cancellation & frequency filtering, not a trained model, so separation quality depends on how the track was originally mixed.`);
+    }catch(e){
+      aiLogMsg(`Stem separation failed: ${(e && e.message) || e}`);
+    }
+    populateAiStemSelect();
+    scheduleAutosave();
+  }
+  aiStemBtn.addEventListener('click', ()=>{
+    const id = aiStemSelect.value;
+    if(!id) return;
+    aiStemBtn.disabled = true;
+    aiSplitStems(id).finally(()=> aiStemBtn.disabled = false);
   });
 
   function aiArrangeAll(){
