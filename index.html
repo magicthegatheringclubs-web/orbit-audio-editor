@@ -237,6 +237,46 @@
   .preset-chip:hover{ border-color: var(--dot-color, var(--accent)); color: var(--dot-color, var(--accent)); }
   .preset-chip.more-toggle{ border-style:dashed; color: var(--text-dimmer); }
   .preset-chip[hidden]{ display:none; }
+
+  /* ---------- Mobile app shell: bottom tab bar, settings page, track action sheet ---------- */
+  .mobile-tabbar{ display:none; }
+  .settings-gear-btn{ font-size:15px; }
+  .settings-list{ display:flex; flex-direction:column; }
+  .settings-row{
+    display:flex; align-items:center; gap:12px; width:100%;
+    background:none; border:none; color: var(--text); text-align:left;
+    padding:13px 4px; font-size:13.5px; font-family:'Space Grotesk',sans-serif; cursor:pointer;
+    border-bottom:1px solid var(--line-soft);
+  }
+  .settings-row:last-child{ border-bottom:none; }
+  .settings-row-icon{ font-size:16px; width:22px; text-align:center; flex-shrink:0; }
+  .settings-row-label{ flex:1; }
+  .settings-row-chevron{ color: var(--text-dimmer); font-size:15px; }
+  .settings-row-sub{ display:block; font-size:10.5px; color:var(--text-dimmer); font-weight:400; margin-top:3px; line-height:1.4; }
+  .settings-divider{ height:16px; }
+  .switch{ position:relative; display:inline-block; width:40px; height:23px; flex-shrink:0; }
+  .switch input{ position:absolute; opacity:0; width:100%; height:100%; margin:0; cursor:pointer; }
+  .switch-track{ position:absolute; inset:0; background: var(--panel-2); border:1px solid var(--line); border-radius:999px; transition:.15s; pointer-events:none; }
+  .switch-track::before{ content:""; position:absolute; width:17px; height:17px; left:2px; top:2px; background: var(--text-dim); border-radius:50%; transition:.15s; }
+  .switch input:checked + .switch-track{ background: var(--dot-color, var(--accent)); border-color: var(--dot-color, var(--accent)); }
+  .switch input:checked + .switch-track::before{ transform: translateX(17px); background:#06201c; }
+
+  .kebab-btn{ display:none; font-size:16px; font-weight:700; letter-spacing:1px; }
+  .sheet-overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:200; display:flex; align-items:flex-end; justify-content:center; }
+  .sheet-panel{
+    width:100%; max-width:480px; background: var(--panel-2); border:1px solid var(--line); border-bottom:none;
+    border-radius:18px 18px 0 0; padding:10px 8px calc(10px + env(safe-area-inset-bottom));
+  }
+  .sheet-handle{ width:36px; height:4px; border-radius:2px; background: var(--line); margin:2px auto 10px; }
+  .sheet-title{ font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color: var(--text-dimmer); padding:2px 12px 8px; }
+  .sheet-row{
+    display:flex; align-items:center; gap:12px; width:100%; background:none; border:none; color: var(--text);
+    text-align:left; padding:13px 12px; font-size:14px; font-family:'Space Grotesk',sans-serif; cursor:pointer; border-radius:10px;
+  }
+  .sheet-row:hover{ background: rgba(255,255,255,0.05); }
+  .sheet-row-icon{ width:22px; text-align:center; flex-shrink:0; font-size:15px; }
+  .sheet-row-danger{ color: var(--danger); }
+  .sheet-divider{ height:1px; background: var(--line-soft); margin:4px 8px; }
   .kf-mini-btn{
     display:inline-block;
     background: var(--panel); border:1px solid var(--line); color: var(--text-dim); border-radius:6px;
@@ -429,21 +469,57 @@
     .grid{ gap: 14px; }
     .panel{ padding: 14px; }
 
-    /* Transport leaves the header flow and docks to the bottom of the screen */
+    /* Transport leaves the header flow and docks above the new bottom tab bar */
     .transport{
-      position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+      position: fixed; left: 0; right: 0; bottom: 56px; z-index: 60;
       border-radius: 0; border-left: none; border-right: none; border-bottom: none;
       background: rgba(16,20,26,0.94);
       -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
       box-shadow: 0 -6px 24px rgba(0,0,0,0.4);
       padding: 10px 14px;
-      padding-bottom: max(10px, env(safe-area-inset-bottom));
       padding-left: max(14px, env(safe-area-inset-left));
       padding-right: max(14px, env(safe-area-inset-right));
       gap: 10px;
     }
     .seek{ flex: 1; width: auto; }
     .time{ min-width: auto; font-size: 11px; }
+
+    /* App-style bottom tab bar: switches which panel is visible instead of stacking
+       Field / Tracks / Timeline on top of each other. Settings opens as a sheet instead
+       of a fourth panel. Desktop never sees this — .grid keeps showing everything at once. */
+    .mobile-tabbar{
+      display:flex; position: fixed; left:0; right:0; bottom:0; z-index: 61;
+      background: rgba(10,13,17,0.97);
+      -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+      border-top: 1px solid var(--line);
+      padding: 5px max(8px, env(safe-area-inset-right)) calc(5px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+      gap: 2px;
+    }
+    .tab-btn{
+      flex:1; display:flex; flex-direction:column; align-items:center; gap:2px;
+      background:none; border:none; color: var(--text-dimmer); font-size:9.5px;
+      font-family:'Space Grotesk',sans-serif; padding:6px 2px 5px; border-radius:10px; cursor:pointer;
+    }
+    .tab-btn .tab-icon{ font-size:18px; line-height:1; }
+    .tab-btn.active{ color: var(--dot-color, var(--accent)); }
+
+    body[data-mtab] .panel-field, body[data-mtab] .tracks-panel, body[data-mtab] .timeline-panel{ display:none; }
+    body[data-mtab="field"] .panel-field{ display:block; }
+    body[data-mtab="tracks"] .tracks-panel{ display:block; }
+    body[data-mtab="timeline"] .timeline-panel{ display:block; }
+    body[data-mtab] .grid{ gap:0; }
+    body[data-mtab] footer{ display:none; }
+
+    /* Header decluttering: Save/Load/AI Editor/Export move into the Settings sheet;
+       Undo/redo + transport stay put since they're used constantly while editing. */
+    .header-controls .export-group{ display:none; }
+
+    /* Track card top row: rename (pencil) + remove (✕) collapse into one kebab menu,
+       matching the reference action-sheet pattern, so the row stops overflowing on
+       narrow phones. */
+    .track-top .rename-btn, .track-top .remove-btn{ display:none; }
+    .track-top .kebab-btn{ display:flex; }
+  }
 
     /* Track list scrolls with the page instead of in its own inner box */
     .tracks-panel{ max-height: none; overflow-y: visible; }
@@ -462,8 +538,7 @@
     .modal-overlay{ align-items: flex-end; padding: 0; }
     .modal-panel{
       max-width: none; width: 100%;
-      border-radius: 20px 20px 0 0; border-bottom: none;
-      max-height: min(88vh, 88dvh);
+      border-radius: 20px 20px 0 0; border-bottom: none;      max-height: min(88vh, 88dvh);
       padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
       margin: 0;
     }
@@ -503,6 +578,7 @@
         <div class="export-group">
           <button class="export-btn" id="exportOpenBtn">⭳ Export</button>
         </div>
+        <button class="icon-btn settings-gear-btn" id="settingsGearBtn" title="Settings">⚙</button>
       </div>
     </div>
   </header>
@@ -516,7 +592,7 @@
 
   <div class="grid">
     <!-- Orbit Visualization -->
-    <div class="panel">
+    <div class="panel panel-field">
       <div class="panel-title">
         <h2>Spatial Field — drag a source to move it</h2>
         <span class="hint mono">top-down view</span>
@@ -580,6 +656,68 @@
   </div>
 
   <footer>Positions render through the Web Audio API's HRTF 3D panner. Export renders offline and downloads a WAV. Headphones recommended.</footer>
+</div>
+
+<!-- Mobile-only bottom tab bar -->
+<nav class="mobile-tabbar" id="mobileTabbar">
+  <button class="tab-btn active" data-tab="field"><span class="tab-icon">◎</span><span>Field</span></button>
+  <button class="tab-btn" data-tab="tracks"><span class="tab-icon">≡</span><span>Tracks</span></button>
+  <button class="tab-btn" data-tab="timeline"><span class="tab-icon">⏱</span><span>Timeline</span></button>
+  <button class="tab-btn" data-tab="settings"><span class="tab-icon">⚙</span><span>Settings</span></button>
+</nav>
+
+<!-- Settings page -->
+<div class="modal-overlay" id="settingsOverlay" style="display:none;">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <h2>⚙ SETTINGS</h2>
+      <button class="icon-btn" id="settingsCloseBtn" title="Close">✕</button>
+    </div>
+    <div class="settings-list">
+      <button class="settings-row" id="settingsSaveRow">
+        <span class="settings-row-icon">💾</span>
+        <span class="settings-row-label">Save Project</span>
+        <span class="settings-row-chevron">›</span>
+      </button>
+      <button class="settings-row" id="settingsLoadRow">
+        <span class="settings-row-icon">📂</span>
+        <span class="settings-row-label">Load Project</span>
+        <span class="settings-row-chevron">›</span>
+      </button>
+      <button class="settings-row" id="settingsAiRow">
+        <span class="settings-row-icon">✨</span>
+        <span class="settings-row-label">AI Editor</span>
+        <span class="settings-row-chevron">›</span>
+      </button>
+      <button class="settings-row" id="settingsExportRow">
+        <span class="settings-row-icon">⭳</span>
+        <span class="settings-row-label">Export Mix</span>
+        <span class="settings-row-chevron">›</span>
+      </button>
+    </div>
+    <div class="settings-divider"></div>
+    <div class="settings-list">
+      <div class="settings-row">
+        <span class="settings-row-icon">🎙</span>
+        <span class="settings-row-label">Auto-rename split stems<span class="settings-row-sub">Names each track "Vocals / Drums / Bass / Other" automatically after AI stem splitting. Off keeps the original name on all four.</span></span>
+        <label class="switch">
+          <input type="checkbox" id="autoRenameStemsToggle" checked>
+          <span class="switch-track"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Track action sheet -->
+<div class="sheet-overlay" id="trackSheetOverlay" style="display:none;">
+  <div class="sheet-panel">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="trackSheetTitle"></div>
+    <button class="sheet-row" id="sheetRenameBtn"><span class="sheet-row-icon">✎</span><span>Rename</span></button>
+    <div class="sheet-divider"></div>
+    <button class="sheet-row sheet-row-danger" id="sheetRemoveBtn"><span class="sheet-row-icon">🗑</span><span>Remove Track</span></button>
+  </div>
 </div>
 
 <!-- AI Editor modal -->
@@ -1012,6 +1150,18 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
   let masterClockBase = 0;
   let masterClockCtxStart = 0;
 
+  // ---------- App settings (persisted separately from any one project) ----------
+  function loadAppSettings(){
+    try{
+      const raw = localStorage.getItem('orbitAppSettings');
+      return Object.assign({ autoRenameStems: true }, raw ? JSON.parse(raw) : {});
+    }catch(e){ return { autoRenameStems: true }; }
+  }
+  let appSettings = loadAppSettings();
+  function saveAppSettings(){
+    try{ localStorage.setItem('orbitAppSettings', JSON.stringify(appSettings)); }catch(e){}
+  }
+
   const svg = document.getElementById('orbitSvg');
   const dotsGroup = document.getElementById('dotsGroup');
   const pathsGroup = document.getElementById('pathsGroup');
@@ -1040,6 +1190,19 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
   const saveProjectBtn = document.getElementById('saveProjectBtn');
   const loadProjectBtn = document.getElementById('loadProjectBtn');
   const aiOpenBtn = document.getElementById('aiOpenBtn');
+  const settingsGearBtn = document.getElementById('settingsGearBtn');
+  const settingsOverlay = document.getElementById('settingsOverlay');
+  const settingsCloseBtn = document.getElementById('settingsCloseBtn');
+  const settingsSaveRow = document.getElementById('settingsSaveRow');
+  const settingsLoadRow = document.getElementById('settingsLoadRow');
+  const settingsAiRow = document.getElementById('settingsAiRow');
+  const settingsExportRow = document.getElementById('settingsExportRow');
+  const autoRenameStemsToggle = document.getElementById('autoRenameStemsToggle');
+  const mobileTabbar = document.getElementById('mobileTabbar');
+  const trackSheetOverlay = document.getElementById('trackSheetOverlay');
+  const trackSheetTitle = document.getElementById('trackSheetTitle');
+  const sheetRenameBtn = document.getElementById('sheetRenameBtn');
+  const sheetRemoveBtn = document.getElementById('sheetRemoveBtn');
   const autosaveBanner = document.getElementById('autosaveBanner');
   const autosaveBannerText = document.getElementById('autosaveBannerText');
   const autosaveRestoreBtn = document.getElementById('autosaveRestoreBtn');
@@ -1203,8 +1366,8 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     const R = r > 0.3 ? r : 2.2;
     return Math.min(R, MAX_RADIUS_UNITS - 0.4);
   }
-  function presetFigureEight(dur, R, y, count){
-    const cycles = 2;
+  function presetFigureEight(dur, R, y, count, speed){
+    const cycles = 2 * speed;
     const pts = [];
     for(let i=0;i<count;i++){
       const frac = i/(count-1);
@@ -1213,8 +1376,8 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     }
     return pts;
   }
-  function presetSpiral(dur, R, y, count, inward){
-    const turns = 3;
+  function presetSpiral(dur, R, y, count, inward, speed){
+    const turns = 3 * speed;
     const pts = [];
     for(let i=0;i<count;i++){
       const frac = i/(count-1);
@@ -1224,9 +1387,9 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     }
     return pts;
   }
-  function presetPendulum(dur, R, y, count){
+  function presetPendulum(dur, R, y, count, speed){
     const maxAngle = 55 * Math.PI/180;
-    const swings = 5;
+    const swings = 5 * speed;
     const pts = [];
     for(let i=0;i<count;i++){
       const frac = i/(count-1);
@@ -1235,14 +1398,14 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     }
     return pts;
   }
-  function presetDrunkWalk(dur, R, y, count){
+  function presetDrunkWalk(dur, R, y, count, speed){
     const pts = [];
     let x = 0, z = 0, heading = Math.random()*Math.PI*2;
     for(let i=0;i<count;i++){
       const frac = i/(count-1);
       if(i > 0){
         heading += (Math.random()-0.5)*1.2;
-        const step = R*0.14*(0.6+Math.random()*0.8);
+        const step = R*0.14*speed*(0.6+Math.random()*0.8);
         let nx = x + Math.sin(heading)*step;
         let nz = z - Math.cos(heading)*step;
         if(Math.sqrt(nx*nx+nz*nz) > R){
@@ -1262,13 +1425,14 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     const count = Math.max(16, Math.min(60, Math.round(dur/2)));
     const R = pathPresetRadius(track);
     const y = track.y;
+    const speed = track.presetSpeed || 1;
     let pts;
     switch(presetKey){
-      case 'figure8': pts = presetFigureEight(dur, R, y, count); break;
-      case 'spiral-in': pts = presetSpiral(dur, R, y, count, true); break;
-      case 'spiral-out': pts = presetSpiral(dur, R, y, count, false); break;
-      case 'pendulum': pts = presetPendulum(dur, R, y, count); break;
-      case 'drunk': pts = presetDrunkWalk(dur, R, y, count); break;
+      case 'figure8': pts = presetFigureEight(dur, R, y, count, speed); break;
+      case 'spiral-in': pts = presetSpiral(dur, R, y, count, true, speed); break;
+      case 'spiral-out': pts = presetSpiral(dur, R, y, count, false, speed); break;
+      case 'pendulum': pts = presetPendulum(dur, R, y, count, speed); break;
+      case 'drunk': pts = presetDrunkWalk(dur, R, y, count, speed); break;
       default: return;
     }
     track.keyframes = pts;
@@ -1346,7 +1510,7 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
         orbitPhaseAngle: t.orbitPhaseAngle, orbitPhaseTime: t.orbitPhaseTime,
         keyframes: JSON.parse(JSON.stringify(t.keyframes)),
         volumeAutomation: JSON.parse(JSON.stringify(t.volumeAutomation||[])),
-        muted: t.muted, solo: t.solo, volume: t.volume, playbackRate: t.playbackRate
+        muted: t.muted, solo: t.solo, volume: t.volume, playbackRate: t.playbackRate, presetSpeed: t.presetSpeed
       }))
     };
   }
@@ -1479,6 +1643,7 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
       solo: false,
       volume: 0.85,
       playbackRate: 1,
+      presetSpeed: 1,
       dragging: false,
       lastRecordTs: 0
     }, overrides ? stripFileFields(overrides) : {});
@@ -1694,6 +1859,7 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
         <button class="icon-btn solo-btn" title="Solo — silence every other track">S</button>
         <button class="icon-btn mute-btn" title="Mute">🔊</button>
         <button class="icon-btn danger remove-btn" title="Remove track">✕</button>
+        <button class="icon-btn kebab-btn" title="Track menu">⋮</button>
       </div>
       <div class="row">
         <label>Vol</label>
@@ -1731,6 +1897,11 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
       </div>
       <div class="preset-row">
         <span class="preset-label">Path presets — one click, still editable after</span>
+        <div class="row" style="margin-bottom:7px;">
+          <label>Speed</label>
+          <input type="range" class="preset-speed-slider" min="0.25" max="4" step="0.25" value="${track.presetSpeed}">
+          <span class="val preset-speed-val mono">${Number(track.presetSpeed).toFixed(2)}x</span>
+        </div>
         <div class="preset-chips">
           <button class="preset-chip" data-preset="figure8" title="Sweep through a figure-8">Figure-8</button>
           <button class="preset-chip" data-preset="spiral-in" title="Spiral in toward center">Spiral in</button>
@@ -1748,6 +1919,7 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     const soloBtn = card.querySelector('.solo-btn');
     const muteBtn = card.querySelector('.mute-btn');
     const removeBtn = card.querySelector('.remove-btn');
+    const kebabBtn = card.querySelector('.kebab-btn');
     const volSlider = card.querySelector('.vol-slider');
     const volVal = card.querySelector('.vol-val');
     const clearVolAutoBtn = card.querySelector('.clear-vol-auto-btn');
@@ -1768,6 +1940,8 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     const presetChips = card.querySelectorAll('.preset-chip[data-preset]');
     const moreToggle = card.querySelector('.more-toggle');
     const hiddenPresets = card.querySelectorAll('.preset-chip[data-preset][hidden]');
+    const presetSpeedSlider = card.querySelector('.preset-speed-slider');
+    const presetSpeedVal = card.querySelector('.preset-speed-val');
 
     track._ui = { card, muteBtn, soloBtn, meterFill: card.querySelector('.meter-fill'), kfCount, clearVolAutoBtn, autoNote, nameEl, modeBtns, orbitControls, keyframeControls, dirBtn };
     muteBtn.textContent = track.muted ? "🔇" : "🔊";
@@ -1776,6 +1950,11 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     applyModeUI(track, modeBtns, orbitControls, keyframeControls, dirBtn);
 
     // ---- Path presets ----
+    presetSpeedSlider.addEventListener('input', ()=>{
+      track.presetSpeed = parseFloat(presetSpeedSlider.value);
+      presetSpeedVal.textContent = track.presetSpeed.toFixed(2)+"x";
+    });
+    presetSpeedSlider.addEventListener('change', ()=> scheduleAutosave());
     presetChips.forEach(btn=>{
       btn.addEventListener('click', ()=> applyPathPreset(track, btn.dataset.preset));
     });
@@ -1834,6 +2013,8 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     }
     nameEl.addEventListener('dblclick', startRename);
     renameBtn.addEventListener('click', startRename);
+    kebabBtn.addEventListener('click', ()=> openTrackSheet(track));
+    track._ui.startRename = startRename;
 
     muteBtn.addEventListener('click', ()=>{
       recordHistory();
@@ -1848,11 +2029,7 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
       refreshSoloMuteUI();
       scheduleAutosave();
     });
-    removeBtn.addEventListener('click', ()=>{
-      if(!confirm(`Remove "${trimName(track.name)}"? This deletes the track, its motion path, and its volume automation.`)) return;
-      recordHistory();
-      removeTrackById(track.id);
-    });
+    removeBtn.addEventListener('click', ()=> confirmRemoveTrack(track));
     volSlider.addEventListener('pointerdown', ()=> recordHistory());
     volSlider.addEventListener('input', ()=>{
       track.volume = parseFloat(volSlider.value);
@@ -2406,7 +2583,7 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
         mode:t.mode, rotateSpeed:t.rotateSpeed, rotateDir:t.rotateDir,
         orbitPhaseAngle:t.orbitPhaseAngle, orbitPhaseTime:t.orbitPhaseTime,
         keyframes: t.keyframes, volumeAutomation: t.volumeAutomation||[],
-        muted:t.muted, solo:t.solo, volume:t.volume, playbackRate:t.playbackRate
+        muted:t.muted, solo:t.solo, volume:t.volume, playbackRate:t.playbackRate, presetSpeed:t.presetSpeed
       }))
     };
   }
@@ -2595,6 +2772,79 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
   });
   aiCloseBtn.addEventListener('click', ()=>{ aiOverlay.style.display = 'none'; });
   aiOverlay.addEventListener('click', e=>{ if(e.target===aiOverlay) aiOverlay.style.display = 'none'; });
+
+  // ---------- Mobile bottom tab bar ----------
+  // Switches which single panel (Field / Tracks / Timeline) is visible on narrow screens
+  // instead of stacking all three — desktop is untouched, .grid keeps showing everything.
+  // Settings isn't a fourth panel; its tab just opens the settings sheet.
+  const tabBtns = mobileTabbar ? Array.from(mobileTabbar.querySelectorAll('.tab-btn')) : [];
+  let currentMobileTab = 'field';
+  function setMobileTab(tab){
+    currentMobileTab = tab;
+    document.body.setAttribute('data-mtab', tab);
+    tabBtns.forEach(b=> b.classList.toggle('active', b.dataset.tab === tab));
+  }
+  function openSettingsOverlay(){
+    tabBtns.forEach(b=> b.classList.toggle('active', b.dataset.tab === 'settings'));
+    settingsOverlay.style.display = 'flex';
+  }
+  function closeSettingsOverlay(){
+    settingsOverlay.style.display = 'none';
+    tabBtns.forEach(b=> b.classList.toggle('active', b.dataset.tab === currentMobileTab));
+  }
+  tabBtns.forEach(b=>{
+    b.addEventListener('click', ()=>{
+      if(b.dataset.tab === 'settings'){ openSettingsOverlay(); return; }
+      setMobileTab(b.dataset.tab);
+    });
+  });
+  setMobileTab('field');
+
+  // ---------- Settings page ----------
+  // The action rows just forward to the existing header buttons — same handlers, same
+  // logic, so nothing about Save/Load/AI Editor/Export needed to be duplicated.
+  settingsGearBtn.addEventListener('click', openSettingsOverlay);
+  settingsCloseBtn.addEventListener('click', closeSettingsOverlay);
+  settingsOverlay.addEventListener('click', e=>{ if(e.target===settingsOverlay) closeSettingsOverlay(); });
+  settingsSaveRow.addEventListener('click', ()=>{ closeSettingsOverlay(); saveProjectBtn.click(); });
+  settingsLoadRow.addEventListener('click', ()=>{ closeSettingsOverlay(); loadProjectBtn.click(); });
+  settingsAiRow.addEventListener('click', ()=>{ closeSettingsOverlay(); aiOpenBtn.click(); });
+  settingsExportRow.addEventListener('click', ()=>{ closeSettingsOverlay(); exportOpenBtn.click(); });
+  autoRenameStemsToggle.checked = appSettings.autoRenameStems;
+  autoRenameStemsToggle.addEventListener('change', ()=>{
+    appSettings.autoRenameStems = autoRenameStemsToggle.checked;
+    saveAppSettings();
+  });
+
+  // ---------- Track action sheet ----------
+  // Kebab menu on each track card — Rename / Remove, same as the standalone pencil and ✕
+  // buttons they replace on mobile. Shared single sheet, scoped to whichever track opened it.
+  let activeSheetTrack = null;
+  function confirmRemoveTrack(track){
+    if(!confirm(`Remove "${trimName(track.name)}"? This deletes the track, its motion path, and its volume automation.`)) return;
+    recordHistory();
+    removeTrackById(track.id);
+  }
+  function openTrackSheet(track){
+    activeSheetTrack = track;
+    trackSheetTitle.textContent = trimName(track.name);
+    trackSheetOverlay.style.display = 'flex';
+  }
+  function closeTrackSheet(){
+    trackSheetOverlay.style.display = 'none';
+    activeSheetTrack = null;
+  }
+  trackSheetOverlay.addEventListener('click', e=>{ if(e.target===trackSheetOverlay) closeTrackSheet(); });
+  sheetRenameBtn.addEventListener('click', ()=>{
+    const t = activeSheetTrack;
+    closeTrackSheet();
+    if(t && t._ui && t._ui.startRename) setTimeout(()=> t._ui.startRename(), 50);
+  });
+  sheetRemoveBtn.addEventListener('click', ()=>{
+    const t = activeSheetTrack;
+    closeTrackSheet();
+    if(t) confirmRemoveTrack(t);
+  });
 
   function avgChannels(buffer){
     if(buffer.numberOfChannels === 1) return buffer.getChannelData(0);
@@ -2806,9 +3056,10 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
         const base = trimName(track.name);
         removeTrackById(track.id);
         [['Vocals', vocalsBuf], ['Drums', drumsBuf], ['Bass', bassBuf], ['Other', otherBuf]]
-          .forEach(([label, buf])=>{
+          .forEach(([label, buf], idx)=>{
             const wavBlob = audioBufferToWav(buf);
-            const f = new File([wavBlob], `${base} — ${label}.wav`, {type:'audio/wav'});
+            const fname = appSettings.autoRenameStems ? `${base} — ${label}.wav` : `${base} (${idx+1}).wav`;
+            const f = new File([wavBlob], fname, {type:'audio/wav'});
             addTrackFromFile(f);
           });
       } finally {
