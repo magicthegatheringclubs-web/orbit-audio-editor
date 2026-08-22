@@ -138,7 +138,7 @@
   .export-status{ font-size: 10.5px; color: var(--text-dim); min-width: 90px; }
 
   /* ---------- Main grid ---------- */
-  .grid{ display:grid; grid-template-columns: minmax(340px, 560px) minmax(0, 1fr); gap: 20px; align-items:start; }
+  .grid{ display:grid; grid-template-columns: minmax(340px, 560px) minmax(0, 1fr); gap: 20px; align-items:stretch; }
   @media (max-width: 880px){ .grid{ grid-template-columns: minmax(0, 1fr); } }
 
   .panel{
@@ -183,7 +183,9 @@
   .dropzone span.key{ color: var(--text); font-weight:600; }
 
   /* ---------- Track list ---------- */
-  .tracks-panel{ max-height: 460px; overflow-y:auto; }
+  .tracks-panel{ max-height: none; display:flex; flex-direction:column; }
+  .tracks-panel .panel-title{ flex-shrink:0; }
+  .tracks-panel #trackList{ flex:1; overflow-y:auto; min-height:0; }
   .add-btn{
     display:inline-block;
     background: var(--accent); color: #06201c; border:none; font-family:'Space Grotesk',sans-serif;
@@ -207,6 +209,12 @@
   .icon-btn.danger:hover{ color: var(--danger); }
 
   .row{ display:flex; align-items:center; gap:10px; margin-bottom:7px; }
+  .eq-toggle-row{ margin-bottom:6px; }
+  .eq-toggle-row .eq-summary{ color: var(--dot-color, var(--text-dimmer)); }
+  .eq-panel{ padding: 2px 0 8px; border-top: 1px dashed var(--line-soft); margin-top:2px; }
+  .eq-panel .row{ margin-top:7px; margin-bottom:0; }
+  .eq-hint{ margin: 6px 0 8px 56px; line-height:1.4; }
+  .reset-eq-btn{ margin-left: 56px; }
   .row label{ font-size: 10px; color: var(--text-dim); width: 46px; flex-shrink:0; letter-spacing:0.03em; text-transform:uppercase; }
   .row input[type=range]{ -webkit-appearance:none; flex:1; height:3px; background: var(--line); border-radius:2px; outline:none; }
   .row input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:10px;height:10px;border-radius:50%; background: var(--dot-color, var(--accent)); cursor:pointer; }
@@ -379,8 +387,21 @@
   .modal-header h2{ font-size:14px; margin:0; letter-spacing:0.04em; }
   .modal-panel .hint{ display:block; margin-bottom:16px; line-height:1.5; font-size:11.5px; }
   .ai-section{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--line-soft); }
-  .ai-section:last-of-type{ border-bottom:none; }
+  .ai-section:last-of-type{ border-bottom:none; margin-bottom:0; padding-bottom:0; }
   .ai-section label{ font-size:10px; color: var(--text-dim); text-transform:uppercase; letter-spacing:0.04em; width:100%; }
+  .ai-group{ border:1px solid var(--line-soft); border-radius: 12px; margin-bottom:10px; overflow:hidden; }
+  .ai-group-header{
+    width:100%; display:flex; align-items:center; gap:10px; text-align:left;
+    background: rgba(255,255,255,0.02); border:none; cursor:pointer;
+    padding: 12px 14px; font-family:'Space Grotesk',sans-serif; color: var(--text);
+  }
+  .ai-group-header:hover{ background: rgba(255,255,255,0.045); }
+  .ai-group-icon{ font-size:15px; flex-shrink:0; }
+  .ai-group-title{ flex:1; font-size:12.5px; font-weight:600; }
+  .ai-group-sub{ font-size:10.5px; color: var(--text-dimmer); font-weight:400; display:block; margin-top:1px; }
+  .ai-group-chevron{ color: var(--text-dimmer); font-size:12px; transition: transform .15s; flex-shrink:0; }
+  .ai-group.open .ai-group-chevron{ transform: rotate(90deg); color: var(--accent); }
+  .ai-group-body{ padding: 4px 14px 14px; border-top: 1px solid var(--line-soft); }
   .ai-section select{
     flex:1; background: var(--panel-2); border:1px solid var(--line); color: var(--text);
     font-family:'Space Grotesk',sans-serif; font-size:12px; padding:7px 8px; border-radius:6px;
@@ -438,7 +459,7 @@
       padding-top: max(14px, env(safe-area-inset-top));
       padding-left: max(14px, env(safe-area-inset-left));
       padding-right: max(14px, env(safe-area-inset-right));
-      padding-bottom: var(--mobile-dock-h, calc(78px + env(safe-area-inset-bottom)));
+      padding-bottom: calc(134px + env(safe-area-inset-bottom));
     }
     header.top{ margin-bottom: 16px; padding-bottom: 14px; gap: 10px; }
     .brand .mark{ width: 28px; height: 28px; }
@@ -469,9 +490,13 @@
     .grid{ gap: 14px; }
     .panel{ padding: 14px; }
 
-    /* Transport leaves the header flow and docks above the new bottom tab bar */
+    /* Transport leaves the header flow and docks above the new bottom tab bar.
+       56px covers the tab bar's own content+padding; the safe-area term matches
+       the same inset the tab bar adds for the home-indicator area in standalone
+       mode — without it, the tab bar grows taller than this assumed and covers
+       most of the transport bar when the app is added to the Home Screen. */
     .transport{
-      position: fixed; left: 0; right: 0; bottom: 56px; z-index: 60;
+      position: fixed; left: 0; right: 0; bottom: calc(56px + env(safe-area-inset-bottom)); z-index: 60;
       border-radius: 0; border-left: none; border-right: none; border-bottom: none;
       background: rgba(16,20,26,0.94);
       -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
@@ -519,10 +544,10 @@
        narrow phones. */
     .track-top .rename-btn, .track-top .remove-btn{ display:none; }
     .track-top .kebab-btn{ display:flex; }
-  }
 
     /* Track list scrolls with the page instead of in its own inner box */
-    .tracks-panel{ max-height: none; overflow-y: visible; }
+    .tracks-panel{ max-height: none; display:block; }
+    .tracks-panel #trackList{ overflow-y: visible; flex:none; min-height:auto; }
 
     /* Timeline: pin the track label, let the lanes scroll sideways */
     .timeline-scroll{ overflow-x: auto; }
@@ -727,29 +752,65 @@
       <h2>✨ AI EDITOR</h2>
       <button class="icon-btn" id="aiCloseBtn" title="Close">✕</button>
     </div>
-    <span class="hint">Automated tools that analyze your audio, spread tracks into a moving spatial arrangement, and clean up recorded motion paths — everything here only edits the tracks and field below. Nothing renders or downloads until you use Export up top.</span>
-    <div class="ai-section">
-      <label>Split a track by silence</label>
-      <select id="aiSplitSelect"></select>
-      <button class="add-btn" id="aiSplitBtn">Split</button>
+    <span class="hint">Automated tools that analyze your audio and edit the tracks &amp; field below — nothing renders or downloads until you use Export up top.</span>
+
+    <div class="ai-group" data-group="split">
+      <button class="ai-group-header" type="button">
+        <span class="ai-group-icon">✂️</span>
+        <span class="ai-group-title">Split a track<span class="ai-group-sub">By silence, or into vocals/drums/bass/other</span></span>
+        <span class="ai-group-chevron">›</span>
+      </button>
+      <div class="ai-group-body" style="display:none;">
+        <div class="ai-section">
+          <label>By silence</label>
+          <select id="aiSplitSelect"></select>
+          <button class="add-btn" id="aiSplitBtn">Split</button>
+        </div>
+        <div class="ai-section">
+          <label>Into stems</label>
+          <select id="aiStemSelect"></select>
+          <button class="add-btn" id="aiStemBtn">Split into stems</button>
+          <span class="hint" style="margin:0;">Pulls out Vocals, Drums, Bass &amp; Other as separate movable tracks using stereo-field and frequency analysis — no upload, all in this browser. Works best on stereo mixes with centered vocals; can take a minute on longer tracks.</span>
+        </div>
+      </div>
     </div>
-    <div class="ai-section">
-      <label>Split a track into stems</label>
-      <select id="aiStemSelect"></select>
-      <button class="add-btn" id="aiStemBtn">Split into stems</button>
-      <span class="hint" style="margin:0;">Pulls out Vocals, Drums, Bass &amp; Other as separate movable tracks using stereo-field and frequency analysis — no upload, all in this browser. Works best on stereo mixes with centered vocals; can take a minute on longer tracks.</span>
+
+    <div class="ai-group" data-group="motion">
+      <button class="ai-group-header" type="button">
+        <span class="ai-group-icon">🌀</span>
+        <span class="ai-group-title">Arrange &amp; motion<span class="ai-group-sub">Auto-orbit, beat-sync, smooth a path</span></span>
+        <span class="ai-group-chevron">›</span>
+      </button>
+      <div class="ai-group-body" style="display:none;">
+        <div class="ai-section">
+          <button class="add-btn" id="aiArrangeBtn">Auto-orbit all tracks</button>
+          <span class="hint" style="margin:0;">Spreads tracks around the listener at varied speed, radius &amp; direction. Stem-aware: if it finds Vocals/Bass/Drums/Other from the stem splitter, it centers vocals &amp; bass close and still, and only orbits drums &amp; other instruments.</span>
+        </div>
+        <div class="ai-section" style="flex-direction:column; align-items:stretch;">
+          <label>Detect BPM &amp; sync motion</label>
+          <div style="display:flex; gap:8px; width:100%;">
+            <select id="aiBpmSelect" style="flex:1;"></select>
+            <button class="add-btn" id="aiBpmBtn">Detect</button>
+          </div>
+          <span class="hint" style="margin:6px 0 0;">Finds the track's tempo, then lets orbit speed lock to it or the source pulse on every beat.</span>
+          <div id="bpmResultBox" style="display:none; margin-top:10px;">
+            <div class="hint mono" id="bpmResultText" style="margin-bottom:8px;"></div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="kf-mini-btn" id="bpmSyncSpeedBtn" type="button">Sync orbit speed</button>
+              <button class="kf-mini-btn" id="bpmPulseBtn" type="button">Enable beat pulse</button>
+            </div>
+          </div>
+        </div>
+        <div class="ai-section">
+          <label>Smooth a recorded path</label>
+          <select id="aiSmoothSelect"></select>
+          <button class="add-btn" id="aiSmoothBtn">Smooth</button>
+          <span class="hint" style="margin:0;">Turns a jittery, hand-dragged Path-mode recording into a clean, even curve.</span>
+        </div>
+      </div>
     </div>
-    <div class="ai-section">
-      <button class="add-btn" id="aiArrangeBtn">Auto-orbit all tracks</button>
-      <span class="hint" style="margin:0;">Spreads every track around the listener at varied speed, radius &amp; direction.</span>
-    </div>
-    <div class="ai-section">
-      <label>Smooth a recorded path</label>
-      <select id="aiSmoothSelect"></select>
-      <button class="add-btn" id="aiSmoothBtn">Smooth</button>
-      <span class="hint" style="margin:0;">Turns a jittery, hand-dragged Path-mode recording into a clean, even curve.</span>
-    </div>
-    <div class="ai-log mono" id="aiLog"></div>
+
+    <div class="ai-log mono" id="aiLog" style="display:none;"></div>
   </div>
 </div>
 
@@ -1216,6 +1277,12 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
   const aiArrangeBtn = document.getElementById('aiArrangeBtn');
   const aiSmoothSelect = document.getElementById('aiSmoothSelect');
   const aiSmoothBtn = document.getElementById('aiSmoothBtn');
+  const aiBpmSelect = document.getElementById('aiBpmSelect');
+  const aiBpmBtn = document.getElementById('aiBpmBtn');
+  const bpmResultBox = document.getElementById('bpmResultBox');
+  const bpmResultText = document.getElementById('bpmResultText');
+  const bpmSyncSpeedBtn = document.getElementById('bpmSyncSpeedBtn');
+  const bpmPulseBtn = document.getElementById('bpmPulseBtn');
   const aiLog = document.getElementById('aiLog');
   const loadOverlay = document.getElementById('loadOverlay');
   const loadCloseBtn = document.getElementById('loadCloseBtn');
@@ -1467,6 +1534,13 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     });
     if(muteAllBtn) muteAllBtn.classList.toggle('on', tracks.length > 0 && tracks.every(t=>t.muted));
   }
+
+  // ---------- EQ (3-band: low-shelf / mid-peak / high-shelf, per track) ----------
+  function applyEqToNodes(track){
+    if(track.eqLowNode) track.eqLowNode.gain.value = track.eqLow || 0;
+    if(track.eqMidNode) track.eqMidNode.gain.value = track.eqMid || 0;
+    if(track.eqHighNode) track.eqHighNode.gain.value = track.eqHigh || 0;
+  }
   function getVolumeAtTime(track, t){
     if(isEffectivelyMuted(track)) return 0;
     const pts = track.volumeAutomation;
@@ -1510,7 +1584,9 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
         orbitPhaseAngle: t.orbitPhaseAngle, orbitPhaseTime: t.orbitPhaseTime,
         keyframes: JSON.parse(JSON.stringify(t.keyframes)),
         volumeAutomation: JSON.parse(JSON.stringify(t.volumeAutomation||[])),
-        muted: t.muted, solo: t.solo, volume: t.volume, playbackRate: t.playbackRate, presetSpeed: t.presetSpeed
+        muted: t.muted, solo: t.solo, volume: t.volume, playbackRate: t.playbackRate, presetSpeed: t.presetSpeed,
+        eqLow: t.eqLow, eqMid: t.eqMid, eqHigh: t.eqHigh,
+        bpm: t.bpm, beatPhase: t.beatPhase, beatPulse: t.beatPulse, stemRole: t.stemRole
       }))
     };
   }
@@ -1537,7 +1613,7 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
       if(t._kfGroup) t._kfGroup.remove();
       if(t._ui && t._ui.card) t._ui.card.remove();
       if(t._timelineRow) t._timelineRow.remove();
-      try{ t.sourceNode.disconnect(); t.gainNode.disconnect(); t.pannerNode.disconnect(); t.analyser.disconnect(); }catch(e){}
+      try{ t.sourceNode.disconnect(); if(t.eqLowNode) t.eqLowNode.disconnect(); if(t.eqMidNode) t.eqMidNode.disconnect(); if(t.eqHighNode) t.eqHighNode.disconnect(); t.gainNode.disconnect(); t.pannerNode.disconnect(); t.analyser.disconnect(); }catch(e){}
     });
     tracks = [];
     const ctx = getAudioCtx();
@@ -1546,7 +1622,14 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
       const data = snap.tracks.find(t=>t.id===id);
       if(!reg || !data) return;
       try{
-        reg.sourceNode.connect(reg.gainNode);
+        if(reg.eqLowNode && reg.eqMidNode && reg.eqHighNode){
+          reg.sourceNode.connect(reg.eqLowNode);
+          reg.eqLowNode.connect(reg.eqMidNode);
+          reg.eqMidNode.connect(reg.eqHighNode);
+          reg.eqHighNode.connect(reg.gainNode);
+        } else {
+          reg.sourceNode.connect(reg.gainNode); // legacy registry entries from before EQ existed
+        }
         reg.gainNode.connect(reg.pannerNode);
         reg.pannerNode.connect(reg.analyser);
         reg.analyser.connect(ctx.destination);
@@ -1554,6 +1637,7 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
       const track = Object.assign({}, reg, data, { dragging:false, lastRecordTs:0 });
       tracks.push(track);
       track.audioEl.playbackRate = track.playbackRate || 1;
+      applyEqToNodes(track);
       renderTrackCard(track);
       renderDot(track);
       if(track._orbitPath) track._orbitPath.style.display = track.mode === 'orbit' ? '' : 'none';
@@ -1609,6 +1693,12 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     audioEl.loop = false;
 
     const sourceNode = ctx.createMediaElementSource(audioEl);
+    const eqLowNode = ctx.createBiquadFilter();
+    eqLowNode.type = 'lowshelf'; eqLowNode.frequency.value = 250;
+    const eqMidNode = ctx.createBiquadFilter();
+    eqMidNode.type = 'peaking'; eqMidNode.frequency.value = 1500; eqMidNode.Q.value = 0.9;
+    const eqHighNode = ctx.createBiquadFilter();
+    eqHighNode.type = 'highshelf'; eqHighNode.frequency.value = 4000;
     const gainNode = ctx.createGain();
     const pannerNode = ctx.createPanner();
     configurePanner(pannerNode);
@@ -1616,7 +1706,10 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     analyser.fftSize = 256;
     const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
-    sourceNode.connect(gainNode);
+    sourceNode.connect(eqLowNode);
+    eqLowNode.connect(eqMidNode);
+    eqMidNode.connect(eqHighNode);
+    eqHighNode.connect(gainNode);
     gainNode.connect(pannerNode);
     pannerNode.connect(analyser);
     analyser.connect(ctx.destination);
@@ -1626,7 +1719,7 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
 
     const track = Object.assign({
       id, color, name: file.name, file,
-      audioEl, sourceNode, gainNode, pannerNode, analyser, dataArray,
+      audioEl, sourceNode, eqLowNode, eqMidNode, eqHighNode, gainNode, pannerNode, analyser, dataArray,
       x: initRadius * Math.sin(initAngle),
       y: 0,
       z: -initRadius * Math.cos(initAngle),
@@ -1644,11 +1737,18 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
       volume: 0.85,
       playbackRate: 1,
       presetSpeed: 1,
+      eqLow: 0,
+      eqMid: 0,
+      eqHigh: 0,
+      bpm: null,
+      beatPhase: 0,
+      beatPulse: false,
+      stemRole: null,
       dragging: false,
       lastRecordTs: 0
     }, overrides ? stripFileFields(overrides) : {});
     // re-attach the live nodes/file in case an override object carried stale ones
-    Object.assign(track, { id, color, name: track.name || file.name, file, audioEl, sourceNode, gainNode, pannerNode, analyser, dataArray, dragging:false, lastRecordTs:0 });
+    Object.assign(track, { id, color, name: track.name || file.name, file, audioEl, sourceNode, eqLowNode, eqMidNode, eqHighNode, gainNode, pannerNode, analyser, dataArray, dragging:false, lastRecordTs:0 });
 
     gainNode.gain.value = isEffectivelyMuted(track) ? 0 : track.volume;
     setPannerPosition(track);
@@ -1658,8 +1758,9 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     audioEl.preservesPitch = false;
     audioEl.mozPreservesPitch = false;
     audioEl.webkitPreservesPitch = false;
+    applyEqToNodes(track);
 
-    nodeRegistry.set(id, { file, audioEl, sourceNode, gainNode, pannerNode, analyser, dataArray, color });
+    nodeRegistry.set(id, { file, audioEl, sourceNode, eqLowNode, eqMidNode, eqHighNode, gainNode, pannerNode, analyser, dataArray, color });
 
     tracks.push(track);
     renderTrackCard(track);
@@ -1704,7 +1805,7 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     const track = tracks.find(t=>t.id===id);
     if(!track) return;
     track.audioEl.pause();
-    try{ track.sourceNode.disconnect(); track.gainNode.disconnect(); track.pannerNode.disconnect(); track.analyser.disconnect(); }catch(e){}
+    try{ track.sourceNode.disconnect(); if(track.eqLowNode) track.eqLowNode.disconnect(); if(track.eqMidNode) track.eqMidNode.disconnect(); if(track.eqHighNode) track.eqHighNode.disconnect(); track.gainNode.disconnect(); track.pannerNode.disconnect(); track.analyser.disconnect(); }catch(e){}
     removeDot(track);
     if(track._ui && track._ui.card) track._ui.card.remove();
     if(track._timelineRow) track._timelineRow.remove();
@@ -1878,6 +1979,29 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
         <input type="range" class="rate-slider" min="0.5" max="2" step="0.05" value="${track.playbackRate}">
         <span class="val rate-val mono">${track.playbackRate.toFixed(2)}x</span>
       </div>
+      <div class="row eq-toggle-row">
+        <button class="kf-mini-btn eq-toggle-btn" type="button">🎚 EQ</button>
+        <span class="hint eq-summary mono" style="margin:0;"></span>
+      </div>
+      <div class="eq-panel" style="display:none;">
+        <div class="row eq-row">
+          <label>Low</label>
+          <input type="range" class="eq-low-slider" min="-12" max="12" step="1" value="${track.eqLow||0}">
+          <span class="val eq-low-val mono">${(track.eqLow||0)>0?'+':''}${track.eqLow||0}dB</span>
+        </div>
+        <div class="row eq-row">
+          <label>Mid</label>
+          <input type="range" class="eq-mid-slider" min="-12" max="12" step="1" value="${track.eqMid||0}">
+          <span class="val eq-mid-val mono">${(track.eqMid||0)>0?'+':''}${track.eqMid||0}dB</span>
+        </div>
+        <div class="row eq-row">
+          <label>High</label>
+          <input type="range" class="eq-high-slider" min="-12" max="12" step="1" value="${track.eqHigh||0}">
+          <span class="val eq-high-val mono">${(track.eqHigh||0)>0?'+':''}${track.eqHigh||0}dB</span>
+        </div>
+        <div class="hint eq-hint">Mid ≈1.5kHz sits in vocal presence range — cut to push vocals back, boost to bring them forward.</div>
+        <button class="kf-mini-btn reset-eq-btn" type="button">Reset EQ</button>
+      </div>
       <div class="mode-group">
         <button class="mode-btn active" data-mode="static">Static</button>
         <button class="mode-btn" data-mode="orbit">Orbit</button>
@@ -1928,6 +2052,16 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     const heightVal = card.querySelector('.height-val');
     const rateSlider = card.querySelector('.rate-slider');
     const rateVal = card.querySelector('.rate-val');
+    const eqToggleBtn = card.querySelector('.eq-toggle-btn');
+    const eqPanel = card.querySelector('.eq-panel');
+    const eqSummary = card.querySelector('.eq-summary');
+    const eqLowSlider = card.querySelector('.eq-low-slider');
+    const eqLowVal = card.querySelector('.eq-low-val');
+    const eqMidSlider = card.querySelector('.eq-mid-slider');
+    const eqMidVal = card.querySelector('.eq-mid-val');
+    const eqHighSlider = card.querySelector('.eq-high-slider');
+    const eqHighVal = card.querySelector('.eq-high-val');
+    const resetEqBtn = card.querySelector('.reset-eq-btn');
     const modeBtns = card.querySelectorAll('.mode-btn');
     const orbitControls = card.querySelector('.orbit-controls');
     const keyframeControls = card.querySelector('.keyframe-controls');
@@ -2072,6 +2206,42 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     rateSlider.addEventListener('change', ()=>{
       clearTimeout(rateApplyTimer);
       track.audioEl.playbackRate = track.playbackRate;
+      scheduleAutosave();
+    });
+
+    // ---- 3-band EQ ----
+    function syncEqSummary(){
+      const parts = [];
+      if(track.eqLow) parts.push(`L${track.eqLow>0?'+':''}${track.eqLow}`);
+      if(track.eqMid) parts.push(`M${track.eqMid>0?'+':''}${track.eqMid}`);
+      if(track.eqHigh) parts.push(`H${track.eqHigh>0?'+':''}${track.eqHigh}`);
+      eqSummary.textContent = parts.join(' ');
+    }
+    syncEqSummary();
+    eqToggleBtn.addEventListener('click', ()=>{
+      eqPanel.style.display = eqPanel.style.display === 'none' ? 'block' : 'none';
+    });
+    function wireEqBand(slider, valEl, prop, freqLabel){
+      slider.addEventListener('pointerdown', ()=> recordHistory());
+      slider.addEventListener('input', ()=>{
+        track[prop] = parseFloat(slider.value);
+        valEl.textContent = `${track[prop]>0?'+':''}${track[prop]}dB`;
+        applyEqToNodes(track);
+        syncEqSummary();
+      });
+      slider.addEventListener('change', ()=> scheduleAutosave());
+    }
+    wireEqBand(eqLowSlider, eqLowVal, 'eqLow');
+    wireEqBand(eqMidSlider, eqMidVal, 'eqMid');
+    wireEqBand(eqHighSlider, eqHighVal, 'eqHigh');
+    resetEqBtn.addEventListener('click', ()=>{
+      if((track.eqLow || track.eqMid || track.eqHigh) && !confirm('Reset this track\'s EQ to flat?')) return;
+      recordHistory();
+      track.eqLow = 0; track.eqMid = 0; track.eqHigh = 0;
+      eqLowSlider.value = 0; eqMidSlider.value = 0; eqHighSlider.value = 0;
+      eqLowVal.textContent = '0dB'; eqMidVal.textContent = '0dB'; eqHighVal.textContent = '0dB';
+      applyEqToNodes(track);
+      syncEqSummary();
       scheduleAutosave();
     });
     modeBtns.forEach(btn=>{
@@ -2514,7 +2684,21 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
         const rms = Math.sqrt(sum/track.dataArray.length);
         const level = Math.min(1, rms*3.2);
         if(track._ui) track._ui.meterFill.style.width = (level*100).toFixed(0)+"%";
-        if(track._glow) track._glow.setAttribute("r", (13 + level*14).toFixed(1));
+        let glowR = 13 + level*14;
+        let glowOpacity = 0.18;
+        if(track.beatPulse && track.bpm){
+          const interval = 60/track.bpm;
+          let dt = (t - track.beatPhase) % interval;
+          if(dt < 0) dt += interval;
+          const decay = 0.15; // 150ms flash on each beat
+          const pulseAmt = dt < decay ? (1 - dt/decay) : 0;
+          glowR += pulseAmt * 13;
+          glowOpacity += pulseAmt * 0.45;
+        }
+        if(track._glow){
+          track._glow.setAttribute("r", glowR.toFixed(1));
+          track._glow.setAttribute("opacity", glowOpacity.toFixed(2));
+        }
       }
     });
     updateTimelinePlayhead(t);
@@ -2583,7 +2767,9 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
         mode:t.mode, rotateSpeed:t.rotateSpeed, rotateDir:t.rotateDir,
         orbitPhaseAngle:t.orbitPhaseAngle, orbitPhaseTime:t.orbitPhaseTime,
         keyframes: t.keyframes, volumeAutomation: t.volumeAutomation||[],
-        muted:t.muted, solo:t.solo, volume:t.volume, playbackRate:t.playbackRate, presetSpeed:t.presetSpeed
+        muted:t.muted, solo:t.solo, volume:t.volume, playbackRate:t.playbackRate, presetSpeed:t.presetSpeed,
+        eqLow:t.eqLow, eqMid:t.eqMid, eqHigh:t.eqHigh,
+        bpm:t.bpm, beatPhase:t.beatPhase, beatPulse:t.beatPulse, stemRole:t.stemRole
       }))
     };
   }
@@ -2591,7 +2777,7 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
   function clearAllTracksHard(){
     tracks.forEach(t=>{
       t.audioEl.pause();
-      try{ t.sourceNode.disconnect(); t.gainNode.disconnect(); t.pannerNode.disconnect(); t.analyser.disconnect(); }catch(e){}
+      try{ t.sourceNode.disconnect(); if(t.eqLowNode) t.eqLowNode.disconnect(); if(t.eqMidNode) t.eqMidNode.disconnect(); if(t.eqHighNode) t.eqHighNode.disconnect(); t.gainNode.disconnect(); t.pannerNode.disconnect(); t.analyser.disconnect(); }catch(e){}
       removeDot(t);
       if(t._ui && t._ui.card) t._ui.card.remove();
       if(t._timelineRow) t._timelineRow.remove();
@@ -2746,7 +2932,11 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
   loadOverlay.addEventListener('click', e=>{ if(e.target===loadOverlay) loadOverlay.style.display = 'none'; });
 
   // ---------- AI Editor ----------
-  function aiLogMsg(msg){ aiLog.textContent += msg + "\n"; aiLog.scrollTop = aiLog.scrollHeight; }
+  function aiLogMsg(msg){
+    aiLog.style.display = 'block';
+    aiLog.textContent += msg + "\n";
+    aiLog.scrollTop = aiLog.scrollHeight;
+  }
   function populateAiSplitSelect(){
     aiSplitSelect.innerHTML = tracks.length
       ? tracks.map(t=>`<option value="${t.id}">${escapeHtml(trimName(t.name))} (${fmtTime(t.audioEl.duration||0)})</option>`).join('')
@@ -2763,11 +2953,40 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
       ? tracks.map(t=>`<option value="${t.id}">${escapeHtml(trimName(t.name))} (${fmtTime(t.audioEl.duration||0)})</option>`).join('')
       : '<option disabled>No tracks yet — add audio first</option>';
   }
+  function populateAiBpmSelect(){
+    aiBpmSelect.innerHTML = tracks.length
+      ? tracks.map(t=>`<option value="${t.id}">${escapeHtml(trimName(t.name))}${t.bpm ? ` — ${t.bpm} BPM` : ''}</option>`).join('')
+      : '<option disabled>No tracks yet — add audio first</option>';
+    bpmResultBox.style.display = 'none';
+  }
+  // Accordion: only one group open at a time, all collapsed by default so the panel
+  // reads as a scannable menu instead of every tool's controls stacked at once.
+  document.querySelectorAll('.ai-group-header').forEach(header=>{
+    header.addEventListener('click', ()=>{
+      const group = header.closest('.ai-group');
+      const body = group.querySelector('.ai-group-body');
+      const isOpen = group.classList.contains('open');
+      document.querySelectorAll('.ai-group').forEach(g=>{
+        g.classList.remove('open');
+        g.querySelector('.ai-group-body').style.display = 'none';
+      });
+      if(!isOpen){
+        group.classList.add('open');
+        body.style.display = 'block';
+      }
+    });
+  });
   aiOpenBtn.addEventListener('click', ()=>{
     populateAiSplitSelect();
     populateAiStemSelect();
     populateAiSmoothSelect();
+    populateAiBpmSelect();
     aiLog.textContent = '';
+    aiLog.style.display = 'none';
+    document.querySelectorAll('.ai-group').forEach(g=>{
+      g.classList.remove('open');
+      g.querySelector('.ai-group-body').style.display = 'none';
+    });
     aiOverlay.style.display = 'flex';
   });
   aiCloseBtn.addEventListener('click', ()=>{ aiOverlay.style.display = 'none'; });
@@ -2799,31 +3018,6 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     });
   });
   setMobileTab('field');
-
-  // ---------- Mobile dock height sync ----------
-  // The scrollable page reserves bottom padding so its content never sits behind the
-  // fixed transport bar + tab bar. That reserved amount used to be a hardcoded guess,
-  // which was fine in Safari's own browser tab (Safari's own toolbar happened to roughly
-  // cover the mismatch) but left a visible dead gap once "Add to Home Screen" removed
-  // that browser chrome — since env(safe-area-inset-bottom) is also taller in standalone
-  // mode, the guess was off by the most exactly when there was no browser UI left to hide
-  // it. Measuring the real bar heights and feeding that into --mobile-dock-h fixes it in
-  // both contexts instead of guessing a number that only worked by coincidence in one.
-  const transportEl = document.querySelector('.transport');
-  function syncMobileDockHeight(){
-    if(window.innerWidth > 680 || !transportEl){
-      document.documentElement.style.removeProperty('--mobile-dock-h');
-      return;
-    }
-    const tabH = mobileTabbar ? mobileTabbar.getBoundingClientRect().height : 0;
-    const transH = transportEl.getBoundingClientRect().height;
-    document.documentElement.style.setProperty('--mobile-dock-h', (tabH + transH) + 'px');
-  }
-  window.addEventListener('resize', syncMobileDockHeight);
-  window.addEventListener('orientationchange', ()=> setTimeout(syncMobileDockHeight, 60));
-  window.addEventListener('load', syncMobileDockHeight);
-  setTimeout(syncMobileDockHeight, 0);
-  setTimeout(syncMobileDockHeight, 300);
 
   // ---------- Settings page ----------
   // The action rows just forward to the existing header buttons — same handlers, same
@@ -3085,7 +3279,7 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
             const wavBlob = audioBufferToWav(buf);
             const fname = appSettings.autoRenameStems ? `${base} — ${label}.wav` : `${base} (${idx+1}).wav`;
             const f = new File([wavBlob], fname, {type:'audio/wav'});
-            addTrackFromFile(f);
+            addTrackFromFile(f, { stemRole: label.toLowerCase() });
           });
       } finally {
         suspendHistory = false;
@@ -3105,14 +3299,83 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     aiSplitStems(id).finally(()=> aiStemBtn.disabled = false);
   });
 
+  function syncTrackMotionUI(track){
+    setPannerPosition(track);
+    positionDot(track);
+    if(track._ui && track._ui.card){
+      const card = track._ui.card;
+      applyModeUI(track, card.querySelectorAll('.mode-btn'), card.querySelector('.orbit-controls'), card.querySelector('.keyframe-controls'), card.querySelector('.dir-btn'));
+      const speedSlider = card.querySelector('.speed-slider');
+      const speedVal = card.querySelector('.speed-val');
+      if(speedSlider){ speedSlider.value = track.rotateSpeed; speedVal.textContent = track.rotateSpeed.toFixed(1)+'x'; }
+      const heightSlider = card.querySelector('.height-slider');
+      const heightVal = card.querySelector('.height-val');
+      if(heightSlider){ heightSlider.value = track.y; heightVal.textContent = track.y.toFixed(1); }
+    }
+  }
+
   function aiArrangeAll(){
     if(tracks.length === 0){ aiLogMsg('No tracks to arrange yet.'); return; }
     recordHistory();
-    aiLogMsg(`Arranging ${tracks.length} track${tracks.length===1?'':'s'} into orbit…`);
-    const n = tracks.length;
-    tracks.forEach((track, i)=>{
+
+    const hasStems = tracks.some(t=>t.stemRole);
+    if(!hasStems){
+      // No stems detected — the original generic behavior: spread everything into orbit.
+      aiLogMsg(`Arranging ${tracks.length} track${tracks.length===1?'':'s'} into orbit…`);
+      const n = tracks.length;
+      tracks.forEach((track, i)=>{
+        const angle = (i/n) * Math.PI*2;
+        const radius = 1.8 + (i % 3) * 0.9;
+        track.mode = 'orbit';
+        track.radius = radius;
+        track.angle = angle;
+        track.x = radius*Math.sin(angle);
+        track.z = -radius*Math.cos(angle);
+        track.orbitPhaseAngle = angle;
+        track.orbitPhaseTime = currentPlaybackTime();
+        track.rotateSpeed = 0.35 + (i % 4) * 0.22;
+        track.rotateDir = (i % 2 === 0) ? 1 : -1;
+        syncTrackMotionUI(track);
+      });
+      refreshTimelineVisuals();
+      aiLogMsg(`Done — every track is now orbiting at its own speed and direction.`);
+      scheduleAutosave();
+      return;
+    }
+
+    // Stem-aware layout. The rationale, mirrored in the mix:
+    //  - Vocals stay close, centered, and still — movement smears intelligibility and a
+    //    swirling voice reads as gimmicky rather than immersive.
+    //  - Bass stays anchored near the listener too: low frequencies are long-wavelength
+    //    enough that human hearing barely localizes them, so spatializing bass heavily
+    //    mostly just risks phasey, unfocused low end for no perceptual payoff.
+    //  - Drums and any other/instrumental stems are what actually carry the "8D" effect
+    //    well, so those get spread into orbit at varied speed & direction.
+    aiLogMsg(`Arranging ${tracks.length} track${tracks.length===1?'':'s'} — stem-aware layout detected.`);
+    const orbitTracks = tracks.filter(t=> t.stemRole !== 'vocals' && t.stemRole !== 'bass');
+    const n = Math.max(1, orbitTracks.length);
+    let orbitIdx = 0;
+
+    tracks.forEach(track=>{
+      if(track.stemRole === 'vocals'){
+        track.mode = 'static';
+        track.radius = 1.1; track.angle = 0;
+        track.x = 0; track.y = 0.3; track.z = -1.1;
+        syncTrackMotionUI(track);
+        return;
+      }
+      if(track.stemRole === 'bass'){
+        track.mode = 'static';
+        track.radius = 0.6; track.angle = 0;
+        track.x = 0; track.y = -0.6; track.z = -0.4;
+        syncTrackMotionUI(track);
+        return;
+      }
+      // Drums, Other, and any regular (non-stem) tracks share the orbiting spatial ring.
+      const i = orbitIdx++;
       const angle = (i/n) * Math.PI*2;
-      const radius = 1.8 + (i % 3) * 0.9;
+      const isDrums = track.stemRole === 'drums';
+      const radius = isDrums ? (2.2 + (i%2)*0.8) : (1.8 + (i%3)*0.9);
       track.mode = 'orbit';
       track.radius = radius;
       track.angle = angle;
@@ -3120,20 +3383,13 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
       track.z = -radius*Math.cos(angle);
       track.orbitPhaseAngle = angle;
       track.orbitPhaseTime = currentPlaybackTime();
-      track.rotateSpeed = 0.35 + (i % 4) * 0.22;
+      track.rotateSpeed = isDrums ? (0.6 + (i%3)*0.25) : (0.35 + (i%4)*0.22);
       track.rotateDir = (i % 2 === 0) ? 1 : -1;
-      setPannerPosition(track);
-      positionDot(track);
-      if(track._ui && track._ui.card){
-        const card = track._ui.card;
-        applyModeUI(track, card.querySelectorAll('.mode-btn'), card.querySelector('.orbit-controls'), card.querySelector('.keyframe-controls'), card.querySelector('.dir-btn'));
-        const speedSlider = card.querySelector('.speed-slider');
-        const speedVal = card.querySelector('.speed-val');
-        if(speedSlider){ speedSlider.value = track.rotateSpeed; speedVal.textContent = track.rotateSpeed.toFixed(1)+'x'; }
-      }
+      syncTrackMotionUI(track);
     });
+
     refreshTimelineVisuals();
-    aiLogMsg(`Done — every track is now orbiting at its own speed and direction.`);
+    aiLogMsg(`Done — vocals centered up front and held still, bass anchored close, drums & other instruments spread into orbit.`);
     scheduleAutosave();
   }
   aiArrangeBtn.addEventListener('click', aiArrangeAll);
@@ -3180,6 +3436,149 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     if(!id) return;
     aiSmoothBtn.disabled = true;
     try{ aiSmoothPath(id); } finally { aiSmoothBtn.disabled = false; }
+  });
+
+  // ---------- BPM detection & beat-synced motion ----------
+  // Real onset-detection DSP (energy-flux peak picking + inter-onset-interval voting),
+  // not a trained model — same honesty as the stem splitter above.
+  function detectBpmFromBuffer(buffer){
+    const sr = buffer.sampleRate;
+    const data = avgChannels(buffer);
+    const hop = Math.max(1, Math.round(sr * 0.0116)); // ~11.6ms frames
+    const frameCount = Math.floor(data.length / hop);
+    if(frameCount < 8) return null;
+
+    const energy = new Float32Array(frameCount);
+    for(let i=0;i<frameCount;i++){
+      let sum = 0;
+      const start = i*hop;
+      for(let j=0;j<hop;j++){ const s = data[start+j] || 0; sum += s*s; }
+      energy[i] = Math.sqrt(sum/hop);
+    }
+    // Onset strength = positive-only energy rise (spectral-flux-style), lightly smoothed.
+    const flux = new Float32Array(frameCount);
+    for(let i=1;i<frameCount;i++){ const d = energy[i]-energy[i-1]; flux[i] = d>0 ? d : 0; }
+    const smooth = new Float32Array(frameCount);
+    for(let i=0;i<frameCount;i++){
+      const a = flux[Math.max(0,i-1)], b = flux[i], c = flux[Math.min(frameCount-1,i+1)];
+      smooth[i] = (a+b+c)/3;
+    }
+    let mean=0; for(let i=0;i<frameCount;i++) mean+=smooth[i]; mean/=frameCount;
+    let variance=0; for(let i=0;i<frameCount;i++) variance += (smooth[i]-mean)**2; variance/=frameCount;
+    const threshold = mean + Math.sqrt(variance)*1.4;
+
+    const frameSec = hop/sr;
+    const minGapFrames = Math.max(1, Math.round(0.25/frameSec)); // 250ms min spacing → caps at 240 BPM
+    const peaks = [];
+    let lastPeak = -minGapFrames;
+    for(let i=1;i<frameCount-1;i++){
+      if(smooth[i] > threshold && smooth[i] >= smooth[i-1] && smooth[i] >= smooth[i+1] && (i-lastPeak) >= minGapFrames){
+        peaks.push(i*frameSec);
+        lastPeak = i;
+      }
+    }
+    if(peaks.length < 4) return null;
+
+    // Vote on tempo from every pair of nearby onsets, folding octave errors (half/double
+    // time) into a plausible 70–180 BPM range so e.g. a half-time reading still counts.
+    const bpmVotes = new Map();
+    for(let i=0;i<peaks.length;i++){
+      for(let j=i+1;j<Math.min(i+9, peaks.length);j++){
+        let ioi = peaks[j]-peaks[i];
+        if(ioi <= 0) continue;
+        let bpm = 60/ioi;
+        while(bpm < 70) bpm *= 2;
+        while(bpm > 180) bpm /= 2;
+        const rounded = Math.round(bpm);
+        bpmVotes.set(rounded, (bpmVotes.get(rounded)||0) + 1);
+      }
+    }
+    let bestBpm = null, bestVotes = 0;
+    bpmVotes.forEach((votes, bpm)=>{ if(votes > bestVotes){ bestVotes = votes; bestBpm = bpm; } });
+    if(!bestBpm) return null;
+
+    const interval = 60/bestBpm;
+    const phase = ((peaks[0] % interval) + interval) % interval;
+    return { bpm: bestBpm, phase, onsetCount: peaks.length };
+  }
+
+  async function aiDetectBpm(trackId){
+    const track = tracks.find(t=>t.id === Number(trackId));
+    if(!track) return;
+    aiLogMsg(`Analyzing "${track.name}" for tempo…`);
+    let buffer;
+    try{
+      const arrBuf = await track.file.arrayBuffer();
+      buffer = await getAudioCtx().decodeAudioData(arrBuf);
+    }catch(e){
+      aiLogMsg(`Couldn't decode this file for analysis.`);
+      return;
+    }
+    const result = detectBpmFromBuffer(buffer);
+    if(!result){
+      aiLogMsg(`Couldn't find a clear, steady beat in "${track.name}".`);
+      bpmResultBox.style.display = 'none';
+      return;
+    }
+    recordHistory();
+    track.bpm = result.bpm;
+    track.beatPhase = result.phase;
+    aiLogMsg(`Detected ~${result.bpm} BPM for "${track.name}" (from ${result.onsetCount} onsets).`);
+    populateAiBpmSelect(); // refreshes the dropdown text with the new BPM — do this first, since it also resets the result box
+    bpmResultText.textContent = `${trimName(track.name)}: ~${result.bpm} BPM`;
+    bpmResultBox.style.display = 'block';
+    bpmResultBox.dataset.trackId = track.id;
+    bpmPulseBtn.textContent = track.beatPulse ? 'Disable beat pulse' : 'Enable beat pulse';
+    scheduleAutosave();
+  }
+  aiBpmBtn.addEventListener('click', ()=>{
+    const id = aiBpmSelect.value;
+    if(!id) return;
+    aiBpmBtn.disabled = true;
+    aiDetectBpm(id).finally(()=> aiBpmBtn.disabled = false);
+  });
+
+  bpmSyncSpeedBtn.addEventListener('click', ()=>{
+    const id = bpmResultBox.dataset.trackId;
+    const track = tracks.find(t=>t.id === Number(id));
+    if(!track || !track.bpm) return;
+    recordHistory();
+    const beatsPerRevolution = 8; // 2 bars in 4/4 — natural feel, not dizzying
+    const revsPerSecond = (track.bpm/60) / beatsPerRevolution;
+    track.rotateSpeed = Math.max(0.1, Math.min(3, Math.round(revsPerSecond*100)/100));
+    if(track.mode !== 'orbit'){
+      const r = Math.sqrt(track.x*track.x + track.z*track.z);
+      track.radius = r > 0.05 ? r : 2;
+      track.angle = Math.atan2(track.x, -track.z);
+      track.orbitPhaseAngle = track.angle;
+      track.orbitPhaseTime = currentPlaybackTime();
+      track.mode = 'orbit';
+    }
+    if(track._ui && track._ui.card){
+      const card = track._ui.card;
+      applyModeUI(track, card.querySelectorAll('.mode-btn'), card.querySelector('.orbit-controls'), card.querySelector('.keyframe-controls'), card.querySelector('.dir-btn'));
+      const speedSlider = card.querySelector('.speed-slider');
+      const speedVal = card.querySelector('.speed-val');
+      if(speedSlider){ speedSlider.value = track.rotateSpeed; speedVal.textContent = track.rotateSpeed.toFixed(1)+'x'; }
+    }
+    refreshTimelineVisuals();
+    aiLogMsg(`Set "${track.name}" to orbit — one revolution every ${beatsPerRevolution} beats (~${track.rotateSpeed.toFixed(2)}x).`);
+    scheduleAutosave();
+  });
+
+  bpmPulseBtn.addEventListener('click', ()=>{
+    const id = bpmResultBox.dataset.trackId;
+    const track = tracks.find(t=>t.id === Number(id));
+    if(!track || !track.bpm) return;
+    recordHistory();
+    track.beatPulse = !track.beatPulse;
+    bpmPulseBtn.textContent = track.beatPulse ? 'Disable beat pulse' : 'Enable beat pulse';
+    if(!track.beatPulse && track._glow){
+      track._glow.setAttribute('r', '13');
+      track._glow.setAttribute('opacity', '0.18');
+    }
+    aiLogMsg(`Beat pulse ${track.beatPulse ? 'enabled' : 'disabled'} for "${track.name}".`);
+    scheduleAutosave();
   });
 
   // ---------- Export (offline render to WAV) ----------
@@ -3345,11 +3744,18 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
       const src = offlineCtx.createBufferSource();
       src.buffer = audioBuffer;
       src.playbackRate.value = track.playbackRate || 1;
+      const eqLow = offlineCtx.createBiquadFilter();
+      eqLow.type = 'lowshelf'; eqLow.frequency.value = 250; eqLow.gain.value = track.eqLow || 0;
+      const eqMid = offlineCtx.createBiquadFilter();
+      eqMid.type = 'peaking'; eqMid.frequency.value = 1500; eqMid.Q.value = 0.9; eqMid.gain.value = track.eqMid || 0;
+      const eqHigh = offlineCtx.createBiquadFilter();
+      eqHigh.type = 'highshelf'; eqHigh.frequency.value = 4000; eqHigh.gain.value = track.eqHigh || 0;
       const gain = offlineCtx.createGain();
       scheduleVolumeAutomation(track, gain, dur);
       const panner = offlineCtx.createPanner();
       configurePanner(panner);
-      src.connect(gain); gain.connect(panner); panner.connect(offlineCtx.destination);
+      src.connect(eqLow); eqLow.connect(eqMid); eqMid.connect(eqHigh); eqHigh.connect(gain);
+      gain.connect(panner); panner.connect(offlineCtx.destination);
       scheduleAutomation(track, panner, dur);
       src.start(0);
       ok++;
