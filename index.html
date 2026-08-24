@@ -212,6 +212,13 @@
   .row input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:10px;height:10px;border-radius:50%; background: var(--dot-color, var(--accent)); cursor:pointer; }
   .row .val{ font-size: 10px; color: var(--text-dimmer); width:30px; text-align:right; flex-shrink:0;}
 
+  .eq-row .eq-sliders{ display:flex; gap:8px; flex:1; }
+  .eq-band{ display:flex; flex-direction:column; align-items:center; flex:1; gap:2px; min-width:0; }
+  .eq-band-label{ font-size:8.5px; color: var(--text-dimmer); letter-spacing:0.05em; text-transform:uppercase; }
+  .eq-band input[type=range]{ -webkit-appearance:none; width:100%; height:3px; background: var(--line); border-radius:2px; outline:none; }
+  .eq-band input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:10px;height:10px;border-radius:50%; background: var(--dot-color, var(--accent)); cursor:pointer; }
+  .eq-band .val{ font-size:9px; width:auto; }
+
   .mode-group{ display:flex; gap:4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line-soft); }
   .mode-btn{
     flex:1; background: var(--panel); border:1px solid var(--line); color: var(--text-dim);
@@ -379,6 +386,8 @@
   .modal-header h2{ font-size:14px; margin:0; letter-spacing:0.04em; }
   .modal-panel .hint{ display:block; margin-bottom:16px; line-height:1.5; font-size:11.5px; }
   .ai-section{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--line-soft); }
+  .ai-group-title{ font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color: var(--text-dimmer); font-weight:700; margin:16px 0 8px; }
+  .ai-group-title:first-of-type{ margin-top:4px; }
   .ai-section:last-of-type{ border-bottom:none; }
   .ai-section label{ font-size:10px; color: var(--text-dim); text-transform:uppercase; letter-spacing:0.04em; width:100%; }
   .ai-section select{
@@ -803,6 +812,7 @@
       <button class="icon-btn" id="aiCloseBtn" title="Close">✕</button>
     </div>
     <span class="hint">Automated tools that analyze your audio, spread tracks into a moving spatial arrangement, and clean up recorded motion paths — everything here only edits the tracks and field below. Nothing renders or downloads until you use Export up top.</span>
+    <div class="ai-group-title">Splitting</div>
     <div class="ai-section">
       <label>Split a track by silence</label>
       <select id="aiSplitSelect"></select>
@@ -814,10 +824,12 @@
       <button class="add-btn" id="aiStemBtn">Split into stems</button>
       <span class="hint" style="margin:0;">Pulls out Vocals, Drums, Bass &amp; Other as separate movable tracks using stereo-field and frequency analysis — no upload, all in this browser. Works best on stereo mixes with centered vocals; can take a minute on longer tracks.</span>
     </div>
+    <div class="ai-group-title">Arrangement</div>
     <div class="ai-section">
       <button class="add-btn" id="aiArrangeBtn">Auto-orbit all tracks</button>
       <span class="hint" style="margin:0;">Spreads every track around the listener at varied speed, radius &amp; direction.</span>
     </div>
+    <div class="ai-group-title">Cleanup</div>
     <div class="ai-section">
       <label>Smooth a recorded path</label>
       <select id="aiSmoothSelect"></select>
@@ -1709,6 +1721,7 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
   function snapshotState(){
     return {
       trackOrder: tracks.map(t=>t.id),
+      room: Object.assign({}, currentRoom),
       tracks: tracks.map(t=>({
         id: t.id, name: t.name, color: t.color,
         x: t.x, y: t.y, z: t.z, angle: t.angle, radius: t.radius,
@@ -1716,7 +1729,8 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
         orbitPhaseAngle: t.orbitPhaseAngle, orbitPhaseTime: t.orbitPhaseTime,
         keyframes: JSON.parse(JSON.stringify(t.keyframes)),
         volumeAutomation: JSON.parse(JSON.stringify(t.volumeAutomation||[])),
-        muted: t.muted, solo: t.solo, volume: t.volume, playbackRate: t.playbackRate, presetSpeed: t.presetSpeed
+        muted: t.muted, solo: t.solo, volume: t.volume, playbackRate: t.playbackRate, presetSpeed: t.presetSpeed,
+        eq: Object.assign({}, t.eq)
       }))
     };
   }
@@ -1743,27 +1757,39 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
       if(t._kfGroup) t._kfGroup.remove();
       if(t._ui && t._ui.card) t._ui.card.remove();
       if(t._timelineRow) t._timelineRow.remove();
-      try{ t.sourceNode.disconnect(); t.gainNode.disconnect(); t.airLP.disconnect(); t.pannerNode.disconnect(); t.analyser.disconnect(); t.sendGain.disconnect(); }catch(e){}
+      try{ t.sourceNode.disconnect(); t.gainNode.disconnect(); t.eqLow.disconnect(); t.eqMid.disconnect(); t.eqHigh.disconnect(); t.airLP.disconnect(); t.pannerNode.disconnect(); t.analyser.disconnect(); t.sendGain.disconnect(); }catch(e){}
     });
     tracks = [];
     const ctx = getAudioCtx();
     ensureRoomBus(ctx);
+    if(snap.room && snap.room.id){
+      currentRoom = Object.assign({}, snap.room);
+      refreshRoomBus();
+      if(acousticsOverlay.style.display !== 'none') syncAcousticsUI();
+    }
     snap.trackOrder.forEach(id=>{
       const reg = nodeRegistry.get(id);
       const data = snap.tracks.find(t=>t.id===id);
       if(!reg || !data) return;
       try{
         reg.sourceNode.connect(reg.gainNode);
-        reg.gainNode.connect(reg.airLP);
+        reg.gainNode.connect(reg.eqLow);
+        reg.eqLow.connect(reg.eqMid);
+        reg.eqMid.connect(reg.eqHigh);
+        reg.eqHigh.connect(reg.airLP);
         reg.airLP.connect(reg.pannerNode);
         reg.pannerNode.connect(reg.analyser);
         reg.analyser.connect(ctx.destination);
-        reg.gainNode.connect(reg.sendGain);
+        reg.eqHigh.connect(reg.sendGain);
         reg.sendGain.connect(roomBusInput);
       }catch(e){}
       const track = Object.assign({}, reg, data, { dragging:false, lastRecordTs:0 });
       tracks.push(track);
       track.audioEl.playbackRate = track.playbackRate || 1;
+      if(!track.eq) track.eq = { low: 0, mid: 0, high: 0 };
+      track.eqLow.gain.value = track.eq.low;
+      track.eqMid.gain.value = track.eq.mid;
+      track.eqHigh.gain.value = track.eq.high;
       renderTrackCard(track);
       renderDot(track);
       if(track._orbitPath) track._orbitPath.style.display = track.mode === 'orbit' ? '' : 'none';
@@ -1820,6 +1846,9 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
 
     const sourceNode = ctx.createMediaElementSource(audioEl);
     const gainNode = ctx.createGain();
+    const eqLow = ctx.createBiquadFilter(); eqLow.type = 'lowshelf'; eqLow.frequency.value = 250; eqLow.gain.value = 0;
+    const eqMid = ctx.createBiquadFilter(); eqMid.type = 'peaking'; eqMid.frequency.value = 1000; eqMid.Q.value = 0.8; eqMid.gain.value = 0;
+    const eqHigh = ctx.createBiquadFilter(); eqHigh.type = 'highshelf'; eqHigh.frequency.value = 4000; eqHigh.gain.value = 0;
     const airLP = ctx.createBiquadFilter(); airLP.type = 'lowpass'; airLP.frequency.value = 20000;
     const pannerNode = ctx.createPanner();
     configurePanner(pannerNode);
@@ -1830,11 +1859,14 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
 
     ensureRoomBus(ctx);
     sourceNode.connect(gainNode);
-    gainNode.connect(airLP);
+    gainNode.connect(eqLow);
+    eqLow.connect(eqMid);
+    eqMid.connect(eqHigh);
+    eqHigh.connect(airLP);
     airLP.connect(pannerNode);
     pannerNode.connect(analyser);
     analyser.connect(ctx.destination);
-    gainNode.connect(sendGain);
+    eqHigh.connect(sendGain);
     sendGain.connect(roomBusInput);
 
     const initAngle = ((id-1) * 137.5) * Math.PI/180;
@@ -1842,7 +1874,7 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
 
     const track = Object.assign({
       id, color, name: file.name, file,
-      audioEl, sourceNode, gainNode, airLP, pannerNode, analyser, dataArray, sendGain,
+      audioEl, sourceNode, gainNode, eqLow, eqMid, eqHigh, airLP, pannerNode, analyser, dataArray, sendGain,
       x: initRadius * Math.sin(initAngle),
       y: 0,
       z: -initRadius * Math.cos(initAngle),
@@ -1860,11 +1892,12 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
       volume: 0.85,
       playbackRate: 1,
       presetSpeed: 1,
+      eq: { low: 0, mid: 0, high: 0 },
       dragging: false,
       lastRecordTs: 0
     }, overrides ? stripFileFields(overrides) : {});
     // re-attach the live nodes/file in case an override object carried stale ones
-    Object.assign(track, { id, color, name: track.name || file.name, file, audioEl, sourceNode, gainNode, airLP, pannerNode, analyser, dataArray, sendGain, dragging:false, lastRecordTs:0 });
+    Object.assign(track, { id, color, name: track.name || file.name, file, audioEl, sourceNode, gainNode, eqLow, eqMid, eqHigh, airLP, pannerNode, analyser, dataArray, sendGain, dragging:false, lastRecordTs:0 });
 
     gainNode.gain.value = isEffectivelyMuted(track) ? 0 : track.volume;
     setPannerPosition(track);
@@ -1874,8 +1907,12 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     audioEl.preservesPitch = false;
     audioEl.mozPreservesPitch = false;
     audioEl.webkitPreservesPitch = false;
+    if(!track.eq) track.eq = { low: 0, mid: 0, high: 0 };
+    eqLow.gain.value = track.eq.low;
+    eqMid.gain.value = track.eq.mid;
+    eqHigh.gain.value = track.eq.high;
 
-    nodeRegistry.set(id, { file, audioEl, sourceNode, gainNode, airLP, pannerNode, analyser, dataArray, sendGain, color });
+    nodeRegistry.set(id, { file, audioEl, sourceNode, gainNode, eqLow, eqMid, eqHigh, airLP, pannerNode, analyser, dataArray, sendGain, color });
 
     tracks.push(track);
     renderTrackCard(track);
@@ -1912,7 +1949,7 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
   }
 
   function stripFileFields(o){
-    const { id, file, audioEl, sourceNode, gainNode, airLP, pannerNode, analyser, dataArray, sendGain, dragging, lastRecordTs, blob, type, ...rest } = o;
+    const { id, file, audioEl, sourceNode, gainNode, eqLow, eqMid, eqHigh, airLP, pannerNode, analyser, dataArray, sendGain, dragging, lastRecordTs, blob, type, ...rest } = o;
     return rest;
   }
 
@@ -1920,7 +1957,7 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     const track = tracks.find(t=>t.id===id);
     if(!track) return;
     track.audioEl.pause();
-    try{ track.sourceNode.disconnect(); track.gainNode.disconnect(); track.airLP.disconnect(); track.pannerNode.disconnect(); track.analyser.disconnect(); track.sendGain.disconnect(); }catch(e){}
+    try{ track.sourceNode.disconnect(); track.gainNode.disconnect(); track.eqLow.disconnect(); track.eqMid.disconnect(); track.eqHigh.disconnect(); track.airLP.disconnect(); track.pannerNode.disconnect(); track.analyser.disconnect(); track.sendGain.disconnect(); }catch(e){}
     removeDot(track);
     if(track._ui && track._ui.card) track._ui.card.remove();
     if(track._timelineRow) track._timelineRow.remove();
@@ -2029,6 +2066,26 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     const base = name.replace(/\.[^/.]+$/, "");
     return base.length > 16 ? base.slice(0,15)+"…" : base;
   }
+  // Reads a track's audio for analysis (silence-split, stem-split, export). Tries the
+  // track's own File object first; if that fails to decode — e.g. a project restored from
+  // a saved project/autosave, where the stored Blob can come back from IndexedDB in a form
+  // some browsers decode less reliably than a fresh upload even though playback still works
+  // fine off it — falls back to re-fetching the exact blob URL the <audio> element is
+  // already playing from, since that one is proven to work.
+  async function decodeTrackAudio(track){
+    try{
+      const arrBuf = await track.file.arrayBuffer();
+      return await getAudioCtx().decodeAudioData(arrBuf);
+    }catch(primaryErr){
+      try{
+        const resp = await fetch(track.audioEl.src);
+        const arrBuf = await resp.arrayBuffer();
+        return await getAudioCtx().decodeAudioData(arrBuf);
+      }catch(fallbackErr){
+        throw primaryErr;
+      }
+    }
+  }
   function positionDot(track){
     const px = CENTER + track.x * SCALE;
     const py = CENTER + track.z * SCALE;
@@ -2094,6 +2151,26 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
         <input type="range" class="rate-slider" min="0.5" max="2" step="0.05" value="${track.playbackRate}">
         <span class="val rate-val mono">${track.playbackRate.toFixed(2)}x</span>
       </div>
+      <div class="row eq-row">
+        <label>EQ</label>
+        <div class="eq-sliders">
+          <div class="eq-band">
+            <span class="eq-band-label">Low</span>
+            <input type="range" class="eq-low-slider" min="-15" max="15" step="1" value="${track.eq.low}">
+            <span class="val eq-low-val mono">${track.eq.low}dB</span>
+          </div>
+          <div class="eq-band">
+            <span class="eq-band-label">Mid</span>
+            <input type="range" class="eq-mid-slider" min="-15" max="15" step="1" value="${track.eq.mid}">
+            <span class="val eq-mid-val mono">${track.eq.mid}dB</span>
+          </div>
+          <div class="eq-band">
+            <span class="eq-band-label">High</span>
+            <input type="range" class="eq-high-slider" min="-15" max="15" step="1" value="${track.eq.high}">
+            <span class="val eq-high-val mono">${track.eq.high}dB</span>
+          </div>
+        </div>
+      </div>
       <div class="mode-group">
         <button class="mode-btn active" data-mode="static">Static</button>
         <button class="mode-btn" data-mode="orbit">Orbit</button>
@@ -2144,6 +2221,12 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     const heightVal = card.querySelector('.height-val');
     const rateSlider = card.querySelector('.rate-slider');
     const rateVal = card.querySelector('.rate-val');
+    const eqLowSlider = card.querySelector('.eq-low-slider');
+    const eqLowVal = card.querySelector('.eq-low-val');
+    const eqMidSlider = card.querySelector('.eq-mid-slider');
+    const eqMidVal = card.querySelector('.eq-mid-val');
+    const eqHighSlider = card.querySelector('.eq-high-slider');
+    const eqHighVal = card.querySelector('.eq-high-val');
     const modeBtns = card.querySelectorAll('.mode-btn');
     const orbitControls = card.querySelector('.orbit-controls');
     const keyframeControls = card.querySelector('.keyframe-controls');
@@ -2290,6 +2373,19 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
       track.audioEl.playbackRate = track.playbackRate;
       scheduleAutosave();
     });
+    function wireEqBand(slider, valEl, band){
+      slider.addEventListener('pointerdown', ()=> recordHistory());
+      slider.addEventListener('input', ()=>{
+        const v = parseFloat(slider.value);
+        track.eq[band] = v;
+        valEl.textContent = v + "dB";
+        track[band==='low'?'eqLow':band==='mid'?'eqMid':'eqHigh'].gain.value = v;
+      });
+      slider.addEventListener('change', ()=> scheduleAutosave());
+    }
+    wireEqBand(eqLowSlider, eqLowVal, 'low');
+    wireEqBand(eqMidSlider, eqMidVal, 'mid');
+    wireEqBand(eqHighSlider, eqHighVal, 'high');
     modeBtns.forEach(btn=>{
       btn.addEventListener('click', ()=>{
         const newMode = btn.dataset.mode;
@@ -2806,7 +2902,7 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
         mode:t.mode, rotateSpeed:t.rotateSpeed, rotateDir:t.rotateDir,
         orbitPhaseAngle:t.orbitPhaseAngle, orbitPhaseTime:t.orbitPhaseTime,
         keyframes: t.keyframes, volumeAutomation: t.volumeAutomation||[],
-        muted:t.muted, solo:t.solo, volume:t.volume, playbackRate:t.playbackRate, presetSpeed:t.presetSpeed
+        muted:t.muted, solo:t.solo, volume:t.volume, playbackRate:t.playbackRate, presetSpeed:t.presetSpeed, eq:t.eq
       }))
     };
   }
@@ -2814,7 +2910,7 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
   function clearAllTracksHard(){
     tracks.forEach(t=>{
       t.audioEl.pause();
-      try{ t.sourceNode.disconnect(); t.gainNode.disconnect(); t.airLP.disconnect(); t.pannerNode.disconnect(); t.analyser.disconnect(); t.sendGain.disconnect(); }catch(e){}
+      try{ t.sourceNode.disconnect(); t.gainNode.disconnect(); t.eqLow.disconnect(); t.eqMid.disconnect(); t.eqHigh.disconnect(); t.airLP.disconnect(); t.pannerNode.disconnect(); t.analyser.disconnect(); t.sendGain.disconnect(); }catch(e){}
       removeDot(t);
       if(t._ui && t._ui.card) t._ui.card.remove();
       if(t._timelineRow) t._timelineRow.remove();
@@ -3013,6 +3109,7 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
       btn.addEventListener('click', ()=>{
         const preset = ROOM_PRESETS.find(r=>r.id===btn.dataset.room);
         if(!preset) return;
+        recordHistory();
         currentRoom = Object.assign({}, preset);
         refreshRoomBus();
         syncAcousticsUI();
@@ -3031,6 +3128,7 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
   }
   Object.keys(acSliders).forEach(key=>{
     const { input, val, suffix } = acSliders[key];
+    input.addEventListener('pointerdown', ()=> recordHistory());
     input.addEventListener('input', ()=>{
       currentRoom[key] = parseFloat(input.value);
       currentRoom.id = 'custom'; currentRoom.name = 'Custom';
@@ -3167,10 +3265,9 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     aiLogMsg(`Analyzing "${track.name}"…`);
     let buffer;
     try{
-      const arrBuf = await track.file.arrayBuffer();
-      buffer = await getAudioCtx().decodeAudioData(arrBuf);
+      buffer = await decodeTrackAudio(track);
     }catch(e){
-      aiLogMsg(`Couldn't decode this file for analysis.`);
+      aiLogMsg(`Couldn't decode this file for analysis${e && e.message ? ` (${e.message})` : ''}.`);
       return;
     }
     const data = avgChannels(buffer);
@@ -3335,10 +3432,9 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     aiLogMsg(`Analyzing "${track.name}" for stem separation…`);
     let buffer;
     try{
-      const arrBuf = await track.file.arrayBuffer();
-      buffer = await getAudioCtx().decodeAudioData(arrBuf);
+      buffer = await decodeTrackAudio(track);
     }catch(e){
-      aiLogMsg(`Couldn't decode this file for stem separation.`);
+      aiLogMsg(`Couldn't decode this file for stem separation${e && e.message ? ` (${e.message})` : ''}.`);
       return;
     }
     if(buffer.numberOfChannels < 2){
@@ -3653,22 +3749,33 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
       try{
         const arrBuf = await track.file.arrayBuffer();
         audioBuffer = await offlineCtx.decodeAudioData(arrBuf);
-      }catch(e){
-        if(warnings) warnings.push(`Skipped "${track.name}" — this browser couldn't decode it.`);
-        continue;
+      }catch(primaryErr){
+        try{
+          const resp = await fetch(track.audioEl.src);
+          const arrBuf = await resp.arrayBuffer();
+          audioBuffer = await offlineCtx.decodeAudioData(arrBuf);
+        }catch(fallbackErr){
+          if(warnings) warnings.push(`Skipped "${track.name}" — this browser couldn't decode it${primaryErr && primaryErr.message ? ` (${primaryErr.message})` : ''}.`);
+          continue;
+        }
       }
       const src = offlineCtx.createBufferSource();
       src.buffer = audioBuffer;
       src.playbackRate.value = track.playbackRate || 1;
       const gain = offlineCtx.createGain();
       scheduleVolumeAutomation(track, gain, dur);
+      const eq = track.eq || { low:0, mid:0, high:0 };
+      const eqLow = offlineCtx.createBiquadFilter(); eqLow.type = 'lowshelf'; eqLow.frequency.value = 250; eqLow.gain.value = eq.low;
+      const eqMid = offlineCtx.createBiquadFilter(); eqMid.type = 'peaking'; eqMid.frequency.value = 1000; eqMid.Q.value = 0.8; eqMid.gain.value = eq.mid;
+      const eqHigh = offlineCtx.createBiquadFilter(); eqHigh.type = 'highshelf'; eqHigh.frequency.value = 4000; eqHigh.gain.value = eq.high;
       const airLP = offlineCtx.createBiquadFilter(); airLP.type = 'lowpass'; airLP.frequency.value = 20000;
       const panner = offlineCtx.createPanner();
       configurePanner(panner);
       const send = offlineCtx.createGain(); send.gain.value = 0;
       src.connect(gain);
-      gain.connect(airLP); airLP.connect(panner); panner.connect(offlineCtx.destination);
-      gain.connect(send); send.connect(roomBus);
+      gain.connect(eqLow); eqLow.connect(eqMid); eqMid.connect(eqHigh);
+      eqHigh.connect(airLP); airLP.connect(panner); panner.connect(offlineCtx.destination);
+      eqHigh.connect(send); send.connect(roomBus);
       scheduleAutomation(track, panner, dur);
       scheduleAcousticsAutomation(track, airLP, send, dur, room);
       src.start(0);
