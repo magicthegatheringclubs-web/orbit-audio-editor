@@ -846,6 +846,14 @@
           <span class="switch-track"></span>
         </label>
       </div>
+      <div class="settings-row">
+        <span class="settings-row-icon">✂️</span>
+        <span class="settings-row-label">Cut reverb tail on pause<span class="settings-row-sub">Silences any ringing echo/reverb immediately when you hit Pause or Stop, instead of letting it decay naturally. On by default.</span></span>
+        <label class="switch">
+          <input type="checkbox" id="cutTailToggle" checked>
+          <span class="switch-track"></span>
+        </label>
+      </div>
     </div>
   </div>
 </div>
@@ -1346,8 +1354,8 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
   function loadAppSettings(){
     try{
       const raw = localStorage.getItem('orbitAppSettings');
-      return Object.assign({ autoRenameStems: true, theme: 'midnight', showRoomBadge: true }, raw ? JSON.parse(raw) : {});
-    }catch(e){ return { autoRenameStems: true, theme: 'midnight', showRoomBadge: true }; }
+      return Object.assign({ autoRenameStems: true, theme: 'midnight', showRoomBadge: true, cutTailOnPause: true }, raw ? JSON.parse(raw) : {});
+    }catch(e){ return { autoRenameStems: true, theme: 'midnight', showRoomBadge: true, cutTailOnPause: true }; }
   }
   let appSettings = loadAppSettings();
   function saveAppSettings(){
@@ -1407,6 +1415,7 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
   const settingsExportRow = document.getElementById('settingsExportRow');
   const autoRenameStemsToggle = document.getElementById('autoRenameStemsToggle');
   const roomBadgeToggle = document.getElementById('roomBadgeToggle');
+  const cutTailToggle = document.getElementById('cutTailToggle');
   const roomBadge = document.getElementById('roomBadge');
   const roomBadgeIcon = document.getElementById('roomBadgeIcon');
   const roomBadgeText = document.getElementById('roomBadgeText');
@@ -1607,6 +1616,25 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     echoFeedback.gain.value = Math.min(0.85, 0.2 + (currentRoom.echo/100)*0.55);
     echoToneFilter.frequency.value = Math.max(700, currentRoom.tone*0.7);
     echoWetGain.gain.value = (currentRoom.echo/100) * 0.6;
+  }
+  // Cuts off any ringing reverb/echo the instant pause or stop is pressed. Just stopping
+  // the tracks isn't enough — the convolver and the echo feedback loop both have their own
+  // "memory" of sound already in flight, so a big cathedral tail would otherwise keep
+  // playing for seconds after playback stops. Zeroing the wet-output gains (and the echo
+  // feedback gain, so it can't keep quietly sustaining itself) silences that instantly.
+  function silenceRoomBusTail(){
+    if(!roomBusInput) return;
+    const ctx = getAudioCtx();
+    const now = ctx.currentTime;
+    reverbWetGain.gain.setValueAtTime(0, now);
+    echoWetGain.gain.setValueAtTime(0, now);
+    echoFeedback.gain.setValueAtTime(0, now);
+    roomBusInput.gain.setValueAtTime(0, now);
+  }
+  function restoreRoomBusTail(){
+    if(!roomBusInput) return;
+    roomBusInput.gain.value = 1;
+    refreshRoomBus();
   }
   // The one formula both live playback and export automation use, so they stay identical.
   // `d` is distance from the listener in the Field's own units (which match the panner's
@@ -2886,9 +2914,14 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
       tracks.forEach(t=>t.audioEl.pause());
       masterClockBase = currentPlaybackTime();
       isPlaying = false; playBtn.textContent = "▶";
+      if(appSettings.cutTailOnPause) silenceRoomBusTail();
     } else {
       const ctx = getAudioCtx();
       masterClockCtxStart = ctx.currentTime;
+      // Always restore on play/resume (cheap & idempotent) — gating this by the setting
+      // too would leave the room silenced forever if someone pauses, turns the setting
+      // off, then resumes.
+      restoreRoomBusTail();
       tracks.forEach(t=>{ t.audioEl.play().catch(()=>{}); });
       isPlaying = true; playBtn.textContent = "⏸";
     }
@@ -2901,6 +2934,7 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     seekBar.value = 0;
     updateTimeDisplay();
     updateAllPositionsNow();
+    if(appSettings.cutTailOnPause) silenceRoomBusTail();
   });
   seekBar.addEventListener('input', ()=>{
     seeking = true;
@@ -3355,6 +3389,11 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
     appSettings.showRoomBadge = roomBadgeToggle.checked;
     saveAppSettings();
     syncRoomBadge();
+  });
+  cutTailToggle.checked = appSettings.cutTailOnPause;
+  cutTailToggle.addEventListener('change', ()=>{
+    appSettings.cutTailOnPause = cutTailToggle.checked;
+    saveAppSettings();
   });
   roomBadge.addEventListener('click', ()=>{ acousticsOpenBtn.click(); });
   syncRoomBadge();
